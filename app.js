@@ -74,8 +74,8 @@ document.getElementById('btnLogout').addEventListener('click', () => {
 // ---- change password modal ----
 function openPwModal(forced = false) {
   document.getElementById('pwModal').classList.remove('hidden');
-  document.getElementById('pwCancel').style.display = forced ? 'none' : 'block';
-  document.getElementById('oldPw').closest('.field, div').style.display = forced ? 'none' : 'block';
+  document.getElementById('pwCancel').style.display = forced ? 'none' : 'inline-block';
+  document.getElementById('oldPwField').style.display = forced ? 'none' : 'block';
 }
 document.getElementById('btnChangePw').addEventListener('click', () => openPwModal(false));
 document.getElementById('pwCancel').addEventListener('click', () => document.getElementById('pwModal').classList.add('hidden'));
