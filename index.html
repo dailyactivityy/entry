@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sampoorn Finance</title>
+<meta name="theme-color" content="#132A3E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sampoorn Finance">
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#132A3E;overflow:hidden;}
+  iframe{
+    border:0;width:100%;height:100vh;height:100dvh;display:block;
+  }
+  #loading{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:#132A3E;color:#fff;font-family:system-ui,-apple-system,sans-serif;font-size:15px;
+    flex-direction:column;gap:14px;
+  }
+  .spin{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#0E8F82;border-radius:50%;animation:sp .8s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+  <!-- ===== IMPORTANT =====
+       Replace YOUR_WEB_APP_URL_HERE below with your actual Apps Script
+       Web App URL (the one ending in /exec). Do this in TWO places:
+       the <iframe src="..."> tag below.
+  ================================================================ -->
+
+  <div id="loading"><div class="spin"></div>Sampoorn Finance loading...</div>
+  <iframe id="appFrame" src="https://script.google.com/macros/s/AKfycbw0KXM1PPliIhPwKLMOTwjYOCVIqbuMYgsqJL4kyZ5ahv2BCgvv_IxMd6RisY7KiijT/exec" title="Sampoorn Finance"
+    onload="document.getElementById('loading').style.display='none'"></iframe>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
