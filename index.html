@@ -56,10 +56,14 @@
     <div class="modal-card">
       <h3>Password Change Karein</h3>
       <form id="pwForm">
-        <label>Purana Password</label>
-        <input type="password" id="oldPw" />
-        <label>Naya Password</label>
-        <input type="password" id="newPw" required />
+        <div id="oldPwField" class="field">
+          <label>Purana Password</label>
+          <input type="password" id="oldPw" />
+        </div>
+        <div class="field">
+          <label>Naya Password</label>
+          <input type="password" id="newPw" required />
+        </div>
         <div class="modal-actions">
           <button type="button" id="pwCancel" class="btn-ghost">Cancel</button>
           <button type="submit" class="btn-primary">Save</button>
