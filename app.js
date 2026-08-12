@@ -111,7 +111,8 @@ function boot() {
     SESSION.role === 'area' ? `Area: ${SESSION.area}` : 'Admin';
 
   const tabs = SESSION.role === 'branch'
-    ? [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'], ['summary', 'Summary']]
+    ? [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
+       ['summary', 'Summary'], ['creategroup', 'Create Group'], ['transaction', 'Transaction']]
     : SESSION.role === 'area'
     ? [['areaOverview', 'Overview']]
     : [['adminOverview', 'Overview'], ['staff', 'Staff'], ['logs', 'Logs']];
@@ -137,6 +138,8 @@ function render() {
   else if (activeTab === 'dailysheet') renderDailySheet();
   else if (activeTab === 'disburse') renderDisburse();
   else if (activeTab === 'summary') renderBranchSummary();
+  else if (activeTab === 'creategroup') renderCreateGroup();
+  else if (activeTab === 'transaction') renderTransaction();
   else if (activeTab === 'areaOverview') renderAreaOverview();
   else if (activeTab === 'adminOverview') renderAdminOverview();
   else if (activeTab === 'staff') renderStaff();
@@ -292,8 +295,9 @@ async function renderDisburse() {
           </select>
         </div>
         <div class="field"><label>Group Name</label>
-          <input id="d_group" list="d_groupList" required autocomplete="off" placeholder="Select or type a group" />
-          <datalist id="d_groupList"></datalist>
+          <select id="d_group" required>
+            <option value="">-- Select Group --</option>
+          </select>
         </div>
       </div>
       <div class="field"><label>Customer Name</label><input id="d_name" required /></div>
@@ -333,6 +337,7 @@ async function renderDisburse() {
       loanAmt: val('d_loanamt'), emi: val('d_emi'), aadharNo: val('d_aadhar'),
       panNo: val('d_pan'), acNo: val('d_ac'), ifscCode: val('d_ifsc')
     };
+    if (!payload.groupName) { errEl.textContent = 'Please select a group'; errEl.classList.remove('hidden'); return; }
     try {
       await api('addDisbursement', payload);
       toast('Loan disbursed successfully');
@@ -351,10 +356,10 @@ async function loadGroupsForDay() {
   const day = val('d_day');
   try {
     const { groups } = await api('getGroups', { day });
-    const list = document.getElementById('d_groupList');
-    if (list) list.innerHTML = groups.map(g => `<option value="${escapeHtml(g)}"></option>`).join('');
+    const sel = document.getElementById('d_group');
+    if (sel) sel.innerHTML = `<option value="">-- Select Group --</option>` + groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
   } catch (err) {
-    // silently ignore - group suggestions are a convenience, not required
+    // silently ignore - group list is a convenience, not required for the rest of the form
   }
 }
 
@@ -387,14 +392,96 @@ async function renderBranchSummary() {
       <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
       <div class="stat-card"><div class="label">Today's Collection Count</div><div class="value">${s.todayCollectionCount}</div></div>
     </div>
-    <div class="card"><h3>Recent Collections</h3>
-      ${s.recentCollections.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
-        ${s.recentCollections.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
-      </tbody></table></div>` : '<div class="empty-state">No collections yet</div>'}
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Overdue No</div><div class="value">${s.overdueNo}</div></div>
+      <div class="stat-card"><div class="label">Overdue Outstanding</div><div class="value">${money(s.overdueOutstanding)}</div></div>
+      <div class="stat-card"><div class="label">Death No</div><div class="value">${s.deathNo}</div></div>
+      <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(s.deathOutstanding)}</div></div>
     </div>`;
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
+}
+
+// ============================================================
+// BRANCH: CREATE GROUP
+// ============================================================
+async function renderCreateGroup() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+  <div class="card">
+    <h3>Create Group</h3>
+    <form id="createGroupForm">
+      <div class="field"><label>Select Day</label>
+        <select id="cg_day">
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+          <option>Thursday</option><option>Friday</option>
+        </select>
+      </div>
+      <div class="field"><label>Group / Place Name</label><input id="cg_name" required /></div>
+      <div class="field"><label>Address</label><input id="cg_address" /></div>
+      <button class="btn-primary" type="submit">Create Group</button>
+      <p id="cgError" class="error hidden"></p>
+    </form>
+  </div>`;
+
+  document.getElementById('createGroupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('cgError');
+    errEl.classList.add('hidden');
+    try {
+      await api('createGroup', { day: val('cg_day'), groupName: val('cg_name'), address: val('cg_address') });
+      toast('Group created successfully');
+      e.target.reset();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+    }
+  });
+}
+
+// ============================================================
+// BRANCH: TRANSACTION
+// ============================================================
+async function renderTransaction() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+  <div class="card">
+    <h3>Bank Transaction Entry</h3>
+    <form id="transactionForm">
+      <div class="field-row">
+        <div class="field"><label>PNB Deposit</label><input type="number" min="0" id="tx_pnbdep" value="0" /></div>
+        <div class="field"><label>HDFC Deposit</label><input type="number" min="0" id="tx_hdfcdep" value="0" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>PNB UPI</label><input type="number" min="0" id="tx_pnbupi" value="0" /></div>
+        <div class="field"><label>HDFC UPI</label><input type="number" min="0" id="tx_hdfcupi" value="0" /></div>
+      </div>
+      <button class="btn-primary" type="submit">Submit</button>
+      <p id="txError" class="error hidden"></p>
+    </form>
+  </div>`;
+
+  document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('txError');
+    errEl.classList.add('hidden');
+    try {
+      await api('submitTransaction', {
+        pnbDeposit: val('tx_pnbdep'), hdfcDeposit: val('tx_hdfcdep'),
+        pnbUpi: val('tx_pnbupi'), hdfcUpi: val('tx_hdfcupi')
+      });
+      toast('Transaction submitted');
+      e.target.reset();
+      document.getElementById('tx_pnbdep').value = 0;
+      document.getElementById('tx_hdfcdep').value = 0;
+      document.getElementById('tx_pnbupi').value = 0;
+      document.getElementById('tx_hdfcupi').value = 0;
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+    }
+  });
 }
 
 // ============================================================
