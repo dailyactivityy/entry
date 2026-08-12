@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title></title>
+<style>
+  :root{
+    --navy:#132A3E;
+    --navy-2:#1C3B54;
+    --teal:#0E8F82;
+    --teal-dark:#0B6F65;
+    --amber:#D98E3B;
+    --red:#C0503E;
+    --bg:#FFFFFF;
+    --card:#FFFFFF;
+    --line:#E2E7E6;
+    --ink:#16242C;
+    --ink-soft:#5C7079;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,sans-serif;}
+  .mono{font-family:'DM Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select{font-family:inherit;}
+  .hidden{display:none !important;}
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 20% 15%, #1C3B54 0%, #132A3E 55%, #0E1E2C 100%);
+    padding:20px;
+  }
+  .login-card{
+    background:var(--card);width:100%;max-width:380px;border-radius:16px;
+    padding:36px 32px 30px;box-shadow:0 30px 60px rgba(0,0,0,.35);
+  }
+  .brand-mark{
+    width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;margin-bottom:16px;
+  }
+  .login-card h1{font-size:21px;margin:0 0 4px;letter-spacing:-.2px;}
+  .login-card p.sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field select{
+    width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:8px;font-size:15px;
+    outline:none;transition:border-color .15s;background:#FBFCFC;
+  }
+  .field input:focus, .field select:focus{border-color:var(--teal);background:#fff;}
+  .btn{
+    border:none;border-radius:8px;padding:12px 18px;font-weight:700;font-size:14.5px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s, transform .05s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn-primary{background:var(--teal);color:#fff;width:100%;}
+  .btn-primary:hover{background:var(--teal-dark);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1.5px solid var(--line);}
+  .btn-danger{background:var(--red);color:#fff;}
+  .btn-outline-danger{background:transparent;color:var(--red);border:1.5px solid var(--red);}
+  .btn-small{padding:7px 12px;font-size:12.5px;}
+  .error-msg{background:#FBEAE7;color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+
+  /* ---------- APP SHELL ---------- */
+  #appShell{display:none;min-height:100vh;}
+  #appShell.active{
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-rows:54px 1fr;
+    grid-template-areas:"topbar" "content";
+    min-height:100vh;
+  }
+  .topbar{
+    grid-area:topbar;
+    background:#fff;color:var(--ink);padding:0 18px;height:54px;display:flex;align-items:center;gap:14px;
+    justify-content:flex-start;position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line);
+  }
+  .brand-lockup{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14.5px;color:var(--navy);}
+  .brand-lockup .dot{width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));}
+
+  /* ---------- DESKTOP SIDEBAR ---------- */
+  .sidebar{display:none;}
+  @media(min-width:900px){
+    #appShell.active{
+      grid-template-columns:230px 1fr;
+      grid-template-rows:54px 1fr;
+      grid-template-areas:"topbar topbar" "sidebar content";
+    }
+    .sidebar{
+      display:flex;flex-direction:column;grid-area:sidebar;background:var(--navy);
+      padding:18px 12px;position:sticky;top:54px;height:calc(100vh - 54px);overflow-y:auto;
+    }
+    .sidebar .side-section-label{
+      padding:14px 12px 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+      color:rgba(255,255,255,.45);font-weight:700;
+    }
+    .sidebar .side-section-label:first-child{padding-top:4px;}
+    .side-item{
+      width:100%;text-align:left;background:transparent;border:none;padding:11px 12px;font-size:13.5px;
+      font-weight:600;color:rgba(255,255,255,.8);border-radius:8px;display:flex;align-items:center;gap:10px;
+      margin-bottom:2px;
+    }
+    .side-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+    .side-item.active{background:var(--teal);color:#fff;}
+  }
+  .hamburger-btn{
+    background:transparent;border:1.5px solid var(--line);color:var(--ink);border-radius:8px;
+    padding:7px 12px;font-size:17px;line-height:1;
+  }
+  .hamburger-btn:hover{background:#F0F2F1;}
+  .hamburger-wrap{position:relative;}
+  .hamburger-menu{
+    position:absolute;top:44px;left:0;background:#fff;border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 12px 32px rgba(0,0,0,.14);min-width:230px;z-index:50;padding:8px;display:none;
+  }
+  .hamburger-menu.open{display:block;}
+  .hamburger-menu .hm-header{padding:10px 12px 12px;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .hamburger-menu .hm-role{font-size:11px;text-transform:uppercase;color:var(--ink-soft);font-weight:700;letter-spacing:.05em;}
+  .hamburger-menu .hm-name{font-size:14.5px;font-weight:800;margin-top:3px;}
+  .hamburger-menu button.hm-item{
+    width:100%;text-align:left;background:transparent;border:none;padding:11px 12px;font-size:13.5px;
+    font-weight:600;color:var(--ink);border-radius:7px;display:flex;align-items:center;gap:8px;
+  }
+  .hamburger-menu button.hm-item:hover{background:#F0F2F1;}
+  .hamburger-menu button.hm-item.danger{color:var(--red);}
+  .hamburger-menu hr{border:none;border-top:1px solid var(--line);margin:6px 0;}
+
+  .hamburger-menu .hm-section-label{padding:10px 12px 4px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:700;}
+
+  .content{padding:22px 36px;max-width:100%;margin:0 auto;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* ---------- STAT CARDS (flat, no box) ---------- */
+  .stat-grid{display:flex;flex-wrap:wrap;gap:0;margin-bottom:24px;border-bottom:1px solid var(--line);padding-bottom:18px;}
+  .stat-card{
+    padding:0 24px 0 0;margin-right:24px;border-right:1px solid var(--line);
+  }
+  .stat-card:last-child{border-right:none;}
+  .stat-card .label{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:700;margin-bottom:8px;}
+  .stat-card .value{font-size:24px;font-weight:800;letter-spacing:-.3px;}
+  .stat-card .value.teal{color:var(--teal-dark);}
+  .stat-card .value.amber{color:var(--amber);}
+  .stat-card .value.red{color:var(--red);}
+
+  .section-title{font-size:16px;font-weight:800;margin:26px 0 12px;letter-spacing:-.2px;}
+  .section-title:first-child{margin-top:0;}
+
+  /* ---------- TABLE (flat, edge-to-edge, no box) ---------- */
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:600px;}
+  thead th{
+    text-align:left;background:transparent;color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;
+    letter-spacing:.04em;padding:10px 14px 10px 0;font-weight:700;border-bottom:2px solid var(--line);
+  }
+  tbody td{padding:11px 14px 11px 0;border-bottom:1px solid var(--line);}
+  tbody tr:hover{background:#FAFBFB;}
+  .tag{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:#E4F3F0;color:var(--teal-dark);}
+
+  /* ---------- CARDS / SELECT ROW ---------- */
+  .selector-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-end;}
+  .selector-row .field{margin-bottom:0;min-width:190px;}
+
+  .group-grid{display:flex;flex-direction:column;}
+  .group-card{
+    background:transparent;border:none;border-bottom:1px solid var(--line);padding:14px 0;text-align:left;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .group-card:hover{background:#FAFBFB;}
+  .group-card .gname{font-weight:800;font-size:14.5px;margin-bottom:4px;}
+  .group-card .gmeta{font-size:11.5px;color:var(--ink-soft);margin-bottom:0;}
+  .group-card .gos{font-size:15px;font-weight:700;color:var(--navy);}
+
+  /* ---------- COLLECTION FORM ---------- */
+  .cust-card{
+    background:transparent;border:none;border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:0;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .cust-info{flex:1;min-width:190px;}
+  .cust-info .cname{font-weight:800;font-size:14.5px;}
+  .cust-info .cmeta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .cust-figures{display:flex;gap:18px;font-size:12.5px;}
+  .cust-figures div span.k{display:block;color:var(--ink-soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;}
+  .cust-figures div span.v{font-weight:700;font-size:14px;}
+  .put-amt-input{width:120px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:14.5px;text-align:right;}
+  .put-amt-input:focus{outline:none;border-color:var(--teal);}
+
+  .sticky-submit{
+    position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);
+    padding:14px 0;margin-top:12px;display:flex;justify-content:space-between;
+    align-items:center;flex-wrap:wrap;gap:10px;
+  }
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(10,20,25,.55);display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:20px;
+  }
+  .modal-card{background:#fff;border-radius:14px;padding:28px;max-width:400px;width:100%;box-shadow:0 30px 60px rgba(0,0,0,.2);}
+  .modal-card h2{margin:0 0 6px;font-size:18px;}
+  .modal-card p{color:var(--ink-soft);font-size:13.5px;margin:0 0 18px;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
+    padding:12px 20px;border-radius:8px;font-size:13.5px;font-weight:600;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  .toast.err{background:var(--red);}
+  .toast.ok{background:var(--teal-dark);}
+
+  .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);}
+  .empty-state .big{font-size:34px;margin-bottom:6px;}
+
+  .back-link{background:none;border:none;color:var(--teal-dark);font-weight:700;font-size:13px;padding:0;margin-bottom:14px;display:inline-flex;align-items:center;gap:5px;}
+
+  .add-user-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;background:transparent;border:none;border-bottom:1px solid var(--line);padding:0 0 20px;margin-bottom:20px;}
+  .add-user-form .field{margin-bottom:0;}
+  .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;}
+
+  .loader{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--ink-soft);font-size:13.5px;}
+  .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media(max-width:600px){
+    .content{padding:14px;}
+    .topbar{padding:0 14px;}
+    .who{display:none;}
+  }
+
+  /* ---------- LARGER SIZES FOR DESKTOP / BIG SCREENS ---------- */
+  @media(min-width:1000px){
+    .content{padding:28px 44px;}
+    .stat-grid{gap:0;}
+    .stat-card{padding:0 28px 0 0;margin-right:28px;}
+    .stat-card .label{font-size:13px;}
+    .stat-card .value{font-size:30px;}
+    .section-title{font-size:19px;margin:32px 0 14px;}
+    table{font-size:15px;}
+    thead th{font-size:12.5px;padding:12px 16px 12px 0;}
+    tbody td{padding:13px 16px 13px 0;}
+    .tag{font-size:12px;padding:4px 11px;}
+    .cust-info .cname{font-size:16px;}
+    .cust-figures{font-size:14px;}
+    .group-card .gname{font-size:16px;}
+    .group-card .gos{font-size:17px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= BOOT LOADER (checking saved login) ================= -->
+<div id="bootLoader" style="position:fixed;inset:0;background:#132A3E;z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#fff;font-family:'Manrope',system-ui,sans-serif;font-size:14px;">
+  <div class="spinner" style="width:30px;height:30px;border-width:3px;"></div>
+</div>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <p class="sub" style="margin-top:0;">Branch &amp; loan management portal</p>
+    <div class="error-msg" id="loginError"></div>
+    <div class="field">
+      <label>User ID (Phone Number)</label>
+      <input type="text" id="loginUserId" placeholder="e.g. 9876543210" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Login</button>
+    <p class="hint">Default password for new staff is <b>Sampoorn</b>. You'll be asked to set your own password on first login.</p>
+  </div>
+</div>
+
+<!-- ================= FORCE PASSWORD CHANGE MODAL ================= -->
+<div class="modal-backdrop hidden" id="pwModal">
+  <div class="modal-card">
+    <h2>Set a new password</h2>
+    <p>For security, please set your own password before continuing.</p>
+    <div class="error-msg" id="pwError"></div>
+    <div class="field">
+      <label>Current Password</label>
+      <input type="password" id="pwOld">
+    </div>
+    <div class="field">
+      <label>New Password</label>
+      <input type="password" id="pwNew">
+    </div>
+    <div class="field">
+      <label>Confirm New Password</label>
+      <input type="password" id="pwConfirm">
+    </div>
+    <button class="btn btn-primary" onclick="submitPasswordChange()">Save Password</button>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="appShell">
+  <div class="topbar">
+    <div class="hamburger-wrap">
+      <button class="hamburger-btn" onclick="toggleHamburger()">&#9776;</button>
+      <div class="hamburger-menu" id="hamburgerMenu">
+        <div class="hm-header">
+          <div class="hm-role" id="hmRole"></div>
+          <div class="hm-name" id="hmName"></div>
+        </div>
+        <div class="hm-section-label">Menu</div>
+        <div id="hmNavItems"></div>
+        <hr>
+        <button class="hm-item" onclick="closeHamburgerAnd(openDailySheet)">📋 Daily Sheet</button>
+        <hr>
+        <button class="hm-item" onclick="closeHamburgerAnd(openPasswordModalManual)">🔒 Change Password</button>
+        <button class="hm-item danger" onclick="doLogout()">↩ Logout</button>
+      </div>
+    </div>
+    <div class="brand-lockup"><span class="dot"></span>Sampoorn Finance</div>
+  </div>
+
+  <nav class="sidebar" id="desktopSidebar">
+    <div class="side-section-label" id="sideRoleLabel"></div>
+    <div id="sidebarNavItems"></div>
+    <div class="side-section-label">More</div>
+    <button class="side-item" onclick="openDailySheet()">📋 Daily Sheet</button>
+    <button class="side-item" onclick="openPasswordModalManual()">🔒 Change Password</button>
+    <button class="side-item" onclick="doLogout()" style="color:#F4B5AB;">↩ Logout</button>
+  </nav>
+
+  <div class="content">
+
+    <!-- ---------- OVERVIEW PANEL (admin/area/branch all use this base) ---------- -->
+    <div class="panel" id="panel-overview">
+      <div class="stat-grid" id="overviewStats"></div>
+      <div class="section-title" id="branchTableTitle">Branch-wise Summary</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Branch</th><th>Customers</th><th>Outstanding</th>
+            <th>Overdue No</th><th>Overdue Outstanding</th><th>Death No</th><th>Death Outstanding</th>
+          </tr></thead>
+          <tbody id="branchTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---------- BRANCH: COLLECT PANEL ---------- -->
+    <div class="panel" id="panel-collect">
+      <div id="collectSelectView">
+        <div class="section-title">Select Day &amp; Group</div>
+        <div class="selector-row">
+          <div class="field">
+            <label>Day</label>
+            <select id="collectDaySelect" onchange="onCollectDayChange()">
+              <option value="">Select Day</option>
+              <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+              <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Group</label>
+            <select id="collectGroupSelect"><option value="">Select Group</option></select>
+          </div>
+          <button class="btn btn-primary" onclick="loadCollectTable()">Load</button>
+        </div>
+      </div>
+      <div id="collectCustomersView" class="hidden">
+        <button class="back-link" onclick="backToCollectSelect()">&larr; Back</button>
+        <div class="section-title" id="collectGroupTitle"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Sl</th><th>Customer Name</th><th>Ph No</th><th>Co-Applicant</th><th>Disb Date</th>
+              <th>Disb Amt</th><th>EMI Amt</th><th>Opening Outstanding</th><th>Put Amt</th><th>Net Outstanding</th>
+            </tr></thead>
+            <tbody id="custTableBody"></tbody>
+          </table>
+        </div>
+        <div class="sticky-submit">
+          <div id="submitTotalLabel" class="mono" style="font-weight:700;">Total to collect: ₹0</div>
+          <button class="btn btn-primary" onclick="submitCollection()" id="submitCollectionBtn">Submit Collection</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- LOANS PANEL (branch: disbursed + outstanding table) ---------- -->
+    <div class="panel" id="panel-loans">
+      <div class="selector-row">
+        <div class="field">
+          <label>Group</label>
+          <select id="loansGroupFilter" onchange="renderLoansTable()"><option value="">All groups</option></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Customer</th><th>Group</th><th>Loan Amt</th><th>Total Payable (x1.24)</th>
+            <th>Outstanding</th><th>Disb Date</th>
+          </tr></thead>
+          <tbody id="loansTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---------- DAILY SHEET (opened via hamburger menu) ---------- -->
+    <div class="panel" id="panel-dailysheet">
+      <div class="selector-row">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="dailySheetDate" onchange="loadDailySheet()">
+        </div>
+      </div>
+      <div class="section-title" id="dailySheetTitle">Daily Sheet</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="dailySheetHeadRow">
+            <th id="dsBranchHeader" class="hidden">Branch</th>
+            <th>Group Name</th><th>Realizable</th><th>Realised</th><th>Advance</th><th>Overdue</th>
+            <th>Loan Closer</th><th>Net Collection</th><th>Fulpaid No</th><th>Loan No</th><th>Loan Amt</th>
+          </tr></thead>
+          <tbody id="dailySheetBody"></tbody>
+          <tfoot id="dailySheetFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---------- HISTORY PANEL ---------- -->
+    <div class="panel" id="panel-history">
+      <div class="selector-row">
+        <div class="field">
+          <label>Branch</label>
+          <select id="historyBranchFilter" onchange="loadHistory()"></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date/Time</th><th>Customer</th><th>Group</th><th>Branch</th><th>Amount</th><th>Collected By</th><th>Balance After</th>
+          </tr></thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---------- ADMIN: BRANCHES/AREAS PANEL ---------- -->
+    <div class="panel" id="panel-branches">
+      <div class="section-title">Assign Area to Each Branch</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Branch</th><th>Area</th><th></th></tr></thead>
+          <tbody id="branchesAdminBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ---------- ADMIN: USERS PANEL ---------- -->
+    <div class="panel" id="panel-users">
+      <div class="section-title">Add Staff User</div>
+      <div class="add-user-form">
+        <div class="field"><label>Name</label><input id="newUserName"></div>
+        <div class="field"><label>Phone (User ID)</label><input id="newUserPhone"></div>
+        <div class="field">
+          <label>Role</label>
+          <select id="newUserRole" onchange="toggleNewUserFields()">
+            <option value="branch">Branch</option>
+            <option value="area">Area</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="field" id="newUserAreaField"><label>Area</label><input id="newUserArea"></div>
+        <div class="field" id="newUserBranchField"><label>Branch</label>
+          <select id="newUserBranch"></select>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary btn-small" onclick="addUser()">Add User</button></div>
+      </div>
+      <div class="section-title">All Users</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>User ID</th><th>Name</th><th>Role</th><th>Area</th><th>Branch</th><th>Actions</th></tr></thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<script>
+/* ============================================================
+   CLIENT STATE
+   ============================================================ */
+let SESSION = null; // {token, name, role, area, branch}
+let CURRENT_TAB = 'overview';
+let CURRENT_BRANCH_FOR_COLLECT = null;
+let CURRENT_GROUP_FOR_COLLECT = null;
+let LOANS_CACHE = { branch: null, customers: [] };
+
+const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2});
+
+function showToast(msg, type){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ===== EDIT THIS: paste your Apps Script Web App /exec URL here =====
+const API_URL = 'https://script.google.com/macros/s/AKfycbw0KXM1PPliIhPwKLMOTwjYOCVIqbuMYgsqJL4kyZ5ahv2BCgvv_IxMd6RisY7KiijT/exec';
+
+function call(name, ...args){
+  const url = API_URL + '?fn=' + encodeURIComponent(name) + '&args=' + encodeURIComponent(JSON.stringify(args));
+  return fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) throw new Error(data.error || 'Unknown server error');
+      return data.result;
+    });
+}
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+function doLogin(){
+  const userId = document.getElementById('loginUserId').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errBox = document.getElementById('loginError');
+  errBox.style.display = 'none';
+  if (!userId || !password){
+    errBox.textContent = 'Please enter both User ID and Password.';
+    errBox.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  call('login', userId, password).then(res => {
+    btn.textContent = 'Login'; btn.disabled = false;
+    if (!res.success){
+      errBox.textContent = res.message || 'Login failed.';
+      errBox.style.display = 'block';
+      return;
+    }
+    SESSION = res;
+    localStorage.setItem('sf_token', res.token);
+    if (res.mustChangePassword){
+      document.getElementById('pwModal').classList.remove('hidden');
+    } else {
+      enterApp();
+    }
+  }).catch(err => {
+    btn.textContent = 'Login'; btn.disabled = false;
+    errBox.textContent = 'Error: ' + (err.message || err);
+    errBox.style.display = 'block';
+  });
+}
+
+function openPasswordModalManual(){
+  document.getElementById('pwModal').classList.remove('hidden');
+}
+
+function submitPasswordChange(){
+  const oldP = document.getElementById('pwOld').value;
+  const newP = document.getElementById('pwNew').value;
+  const confirmP = document.getElementById('pwConfirm').value;
+  const errBox = document.getElementById('pwError');
+  errBox.style.display = 'none';
+  if (newP !== confirmP){
+    errBox.textContent = "New password and confirmation don't match.";
+    errBox.style.display = 'block';
+    return;
+  }
+  call('changePassword', SESSION.token, oldP, newP).then(res => {
+    if (!res.success){
+      errBox.textContent = res.message || 'Could not change password.';
+      errBox.style.display = 'block';
+      return;
+    }
+    document.getElementById('pwModal').classList.add('hidden');
+    document.getElementById('pwOld').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+    showToast('Password updated', 'ok');
+    if (document.getElementById('appShell').style.display !== 'flex') enterApp();
+  }).catch(err => {
+    errBox.textContent = 'Error: ' + (err.message || err);
+    errBox.style.display = 'block';
+  });
+}
+
+function doLogout(){
+  localStorage.removeItem('sf_token');
+  call('logout', SESSION.token).finally(() => { location.reload(); });
+}
+
+/* ============================================================
+   APP ENTRY / TABS
+   ============================================================ */
+function enterApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').classList.add('active');
+  document.getElementById('hmName').textContent = SESSION.name;
+  const roleLabel = SESSION.role === 'admin' ? 'Admin' : (SESSION.role === 'area' ? 'Area: ' + SESSION.area : 'Branch: ' + SESSION.branch);
+  document.getElementById('hmRole').textContent = roleLabel;
+  document.getElementById('sideRoleLabel').textContent = roleLabel;
+  buildTabs();
+  switchTab('overview');
+}
+
+function toggleHamburger(){
+  document.getElementById('hamburgerMenu').classList.toggle('open');
+}
+function closeHamburgerAnd(fn){
+  document.getElementById('hamburgerMenu').classList.remove('open');
+  fn();
+}
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.hamburger-wrap');
+  if (wrap && !wrap.contains(e.target)){
+    document.getElementById('hamburgerMenu').classList.remove('open');
+  }
+});
+
+function buildTabs(){
+  const tabs = [{ id:'overview', label:'📊 Overview' }];
+  if (SESSION.role === 'branch'){
+    tabs.push({ id:'collect', label:'💰 Collect Payment' });
+    tabs.push({ id:'loans', label:'📄 Loans & Outstanding' });
+  }
+  tabs.push({ id:'history', label:'🧾 Repayment History' });
+  if (SESSION.role === 'admin'){
+    tabs.push({ id:'branches', label:'🏢 Branches / Areas' });
+    tabs.push({ id:'users', label:'👤 Users' });
+  }
+  const nav = document.getElementById('hmNavItems');
+  nav.innerHTML = '';
+  tabs.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'hm-item';
+    b.textContent = t.label;
+    b.id = 'tab-' + t.id;
+    b.onclick = () => { switchTab(t.id); document.getElementById('hamburgerMenu').classList.remove('open'); };
+    nav.appendChild(b);
+  });
+
+  const sideNav = document.getElementById('sidebarNavItems');
+  sideNav.innerHTML = '';
+  tabs.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'side-item';
+    b.textContent = t.label;
+    b.id = 'sidetab-' + t.id;
+    b.onclick = () => switchTab(t.id);
+    sideNav.appendChild(b);
+  });
+}
+
+function switchTab(id){
+  CURRENT_TAB = id;
+  document.querySelectorAll('.hm-item').forEach(b => b.style.background = '');
+  document.querySelectorAll('.side-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const activeBtn = document.getElementById('tab-' + id);
+  if (activeBtn) activeBtn.style.background = '#EAF3F1';
+  const activeSideBtn = document.getElementById('sidetab-' + id);
+  if (activeSideBtn) activeSideBtn.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+
+  if (id === 'overview') loadOverview();
+  if (id === 'collect') loadCollectGroups();
+  if (id === 'loans') loadLoansPanel();
+  if (id === 'history') loadHistoryPanel();
+  if (id === 'branches') loadBranchesAdmin();
+  if (id === 'users') loadUsersAdmin();
+}
+
+/* ============================================================
+   OVERVIEW
+   ============================================================ */
+function loadOverview(){
+  const statsEl = document.getElementById('overviewStats');
+  statsEl.innerHTML = '<div class="loader"><span class="spinner"></span>Loading...</div>';
+  call('getDashboardSummary', SESSION.token).then(d => {
+    document.getElementById('branchTableTitle').textContent =
+      SESSION.role === 'branch' ? 'Your Branch Summary' : 'Branch-wise Summary';
+    statsEl.innerHTML = `
+      <div class="stat-card"><div class="label">Customers</div><div class="value">${d.customerCount}</div></div>
+      <div class="stat-card"><div class="label">Outstanding</div><div class="value amber">${money(d.outstanding)}</div></div>
+      <div class="stat-card"><div class="label">Overdue No</div><div class="value red">${d.overdueCount}</div></div>
+      <div class="stat-card"><div class="label">Overdue Outstanding</div><div class="value red">${money(d.overdueOutstanding)}</div></div>
+      <div class="stat-card"><div class="label">Death No</div><div class="value">${d.deathCount}</div></div>
+      <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(d.deathOutstanding)}</div></div>
+    `;
+    const tbody = document.getElementById('branchTableBody');
+    tbody.innerHTML = '';
+    if (!d.branchSummaries.length){
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);padding:24px;">No data yet</td></tr>';
+    }
+    d.branchSummaries.forEach(b => {
+      tbody.innerHTML += `<tr>
+        <td><b>${b.branch}</b></td><td>${b.customerCount}</td><td>${money(b.outstanding)}</td>
+        <td>${b.overdueCount}</td><td>${money(b.overdueOutstanding)}</td>
+        <td>${b.deathCount}</td><td>${money(b.deathOutstanding)}</td>
+      </tr>`;
+    });
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+/* ============================================================
+   BRANCH: COLLECT PAYMENT (Day -> Group -> Load)
+   ============================================================ */
+let GROUPS_CACHE = [];
+let CUSTOMERS_IN_GROUP = [];
+
+function loadCollectGroups(){
+  CURRENT_BRANCH_FOR_COLLECT = SESSION.branch;
+  document.getElementById('collectSelectView').classList.remove('hidden');
+  document.getElementById('collectCustomersView').classList.add('hidden');
+  document.getElementById('collectDaySelect').value = '';
+  document.getElementById('collectGroupSelect').innerHTML = '<option value="">Select Group</option>';
+  call('getGroupsForBranch', SESSION.token, SESSION.branch).then(groups => {
+    GROUPS_CACHE = groups;
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function onCollectDayChange(){
+  const day = document.getElementById('collectDaySelect').value;
+  const sel = document.getElementById('collectGroupSelect');
+  if (!day){ sel.innerHTML = '<option value="">Select Group</option>'; return; }
+  const filtered = GROUPS_CACHE.filter(g => g.day === day);
+  if (!filtered.length){
+    sel.innerHTML = '<option value="">No groups on this day</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Select Group</option>' +
+    filtered.map(g => `<option value="${g.group}">${g.group} (${g.count} customers)</option>`).join('');
+}
+
+function loadCollectTable(){
+  const group = document.getElementById('collectGroupSelect').value;
+  if (!group){ showToast('Pehle Day aur Group select karein.', 'err'); return; }
+  openGroupCollection(group);
+}
+
+function backToCollectSelect(){
+  document.getElementById('collectSelectView').classList.remove('hidden');
+  document.getElementById('collectCustomersView').classList.add('hidden');
+}
+
+function openGroupCollection(groupName){
+  CURRENT_GROUP_FOR_COLLECT = groupName;
+  document.getElementById('collectSelectView').classList.add('hidden');
+  document.getElementById('collectCustomersView').classList.remove('hidden');
+  document.getElementById('collectGroupTitle').textContent = 'Group: ' + groupName;
+  const tbody = document.getElementById('custTableBody');
+  tbody.innerHTML = '<tr><td colspan="10" class="loader"><span class="spinner"></span>Loading...</td></tr>';
+  call('getCustomersForGroup', SESSION.token, CURRENT_BRANCH_FOR_COLLECT, groupName).then(custs => {
+    CUSTOMERS_IN_GROUP = custs;
+    tbody.innerHTML = '';
+    custs.forEach((c, idx) => {
+      const emiDisplay = isNaN(Number(c.emi)) ? c.emi : money(c.emi);
+      tbody.innerHTML += `<tr>
+        <td>${idx + 1}</td>
+        <td><b>${c.name}</b></td>
+        <td>${c.phone || ''}</td>
+        <td>${c.husband || ''}</td>
+        <td>${c.disbDate}</td>
+        <td>${money(c.loanAmt)}</td>
+        <td>${emiDisplay}</td>
+        <td>${money(c.outstanding)}</td>
+        <td><input type="number" min="0" step="1" class="put-amt-input" placeholder="0"
+              data-cid="${c.customerId}" data-opening="${c.outstanding}" oninput="updateSubmitTotal()"></td>
+        <td class="mono" id="netos-${c.customerId}">${money(c.outstanding)}</td>
+      </tr>`;
+    });
+    updateSubmitTotal();
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function updateSubmitTotal(){
+  let total = 0;
+  document.querySelectorAll('.put-amt-input').forEach(inp => {
+    const amt = Number(inp.value) || 0;
+    total += amt;
+    const opening = Number(inp.dataset.opening) || 0;
+    const net = Math.max(0, opening - amt);
+    const netEl = document.getElementById('netos-' + inp.dataset.cid);
+    if (netEl) netEl.textContent = money(net);
+  });
+  document.getElementById('submitTotalLabel').textContent = 'Total to collect: ' + money(total);
+}
+
+function submitCollection(){
+  const inputs = document.querySelectorAll('.put-amt-input');
+  const payments = [];
+  inputs.forEach(i => {
+    const amt = Number(i.value);
+    if (amt && amt > 0) payments.push({ customerId: i.dataset.cid, amount: amt });
+  });
+  if (!payments.length){
+    showToast('Enter at least one Put Amt value.', 'err');
+    return;
+  }
+  const btn = document.getElementById('submitCollectionBtn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  call('submitPayments', SESSION.token, CURRENT_BRANCH_FOR_COLLECT, payments).then(res => {
+    btn.disabled = false; btn.textContent = 'Submit Collection';
+    showToast('Collected from ' + res.updated + ' customer(s).', 'ok');
+    openGroupCollection(CURRENT_GROUP_FOR_COLLECT); // refresh with new balances
+  }).catch(err => {
+    btn.disabled = false; btn.textContent = 'Submit Collection';
+    showToast('Error: ' + (err.message || err), 'err');
+  });
+}
+
+/* ============================================================
+   DAILY SHEET (from hamburger menu)
+   ============================================================ */
+function openDailySheet(){
+  document.getElementById('hamburgerMenu').classList.remove('open');
+  document.querySelectorAll('.hm-item').forEach(b => b.style.background = '');
+  document.querySelectorAll('.side-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-dailysheet').classList.add('active');
+  CURRENT_TAB = 'dailysheet';
+  const dateInput = document.getElementById('dailySheetDate');
+  if (!dateInput.value){
+    const d = new Date();
+    dateInput.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  loadDailySheet();
+}
+
+function loadDailySheet(){
+  const dateVal = document.getElementById('dailySheetDate').value;
+  const tbody = document.getElementById('dailySheetBody');
+  tbody.innerHTML = '<tr><td colspan="10" class="loader"><span class="spinner"></span>Loading...</td></tr>';
+  document.getElementById('dailySheetFoot').innerHTML = '';
+  call('getDailySheet', SESSION.token, dateVal).then(d => {
+    document.getElementById('dailySheetTitle').textContent = 'Daily Sheet — ' + d.dayName + ' (' + d.date + ')';
+    const showBranch = d.showBranchColumn;
+    document.getElementById('dsBranchHeader').classList.toggle('hidden', !showBranch);
+    tbody.innerHTML = '';
+    if (!d.groups.length){
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--ink-soft);padding:24px;">No groups for this day</td></tr>';
+    }
+    d.groups.forEach(g => {
+      const groupCell = (SESSION.role === 'branch')
+        ? `<button class="back-link" style="margin:0;" onclick="jumpToGroupCollect('${escapeJs(g.branch)}','${escapeJs(g.group)}')">${g.group}</button>`
+        : `<b>${g.group}</b>`;
+      tbody.innerHTML += `<tr>
+        ${showBranch ? `<td>${g.branch}</td>` : ''}
+        <td>${groupCell}</td>
+        <td>${money(g.realizable)}</td><td>${money(g.realised)}</td><td>${money(g.advance)}</td>
+        <td>${money(g.overdue)}</td><td>${money(g.loanCloser)}</td><td><b>${money(g.netCollection)}</b></td>
+        <td>${g.fulpaidNo}</td><td>${g.loanNo}</td><td>${money(g.loanAmt)}</td>
+      </tr>`;
+    });
+    const t = d.totals;
+    document.getElementById('dailySheetFoot').innerHTML = `<tr style="font-weight:800;background:#EEF2F1;">
+      ${showBranch ? '<td></td>' : ''}
+      <td>Total</td>
+      <td>${money(t.realizable)}</td><td>${money(t.realised)}</td><td>${money(t.advance)}</td>
+      <td>${money(t.overdue)}</td><td>${money(t.loanCloser)}</td><td>${money(t.netCollection)}</td>
+      <td>${t.fulpaidNo}</td><td>${t.loanNo}</td><td>${money(t.loanAmt)}</td>
+    </tr>`;
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function jumpToGroupCollect(branch, group){
+  document.querySelectorAll('.hm-item').forEach(b => b.style.background = '');
+  document.querySelectorAll('.side-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabBtn = document.getElementById('tab-collect');
+  if (tabBtn) tabBtn.style.background = '#EAF3F1';
+  const sideTabBtn = document.getElementById('sidetab-collect');
+  if (sideTabBtn) sideTabBtn.classList.add('active');
+  document.getElementById('panel-collect').classList.add('active');
+  CURRENT_TAB = 'collect';
+  CURRENT_BRANCH_FOR_COLLECT = SESSION.branch;
+  call('getGroupsForBranch', SESSION.token, SESSION.branch).then(groups => {
+    GROUPS_CACHE = groups;
+    const g = groups.find(x => x.group === group);
+    document.getElementById('collectDaySelect').value = g ? g.day : '';
+    onCollectDayChange();
+    document.getElementById('collectGroupSelect').value = group;
+    openGroupCollection(group);
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+/* ============================================================
+   BRANCH: LOANS & OUTSTANDING
+   ============================================================ */
+function loadLoansPanel(){
+  const branch = SESSION.branch;
+  const tbody = document.getElementById('loansTableBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="loader"><span class="spinner"></span>Loading...</td></tr>';
+  call('getGroupsForBranch', SESSION.token, branch).then(groups => {
+    const sel = document.getElementById('loansGroupFilter');
+    sel.innerHTML = '<option value="">All groups</option>' + groups.map(g => `<option value="${g.group}">${g.group}</option>`).join('');
+  });
+  // fetch all customers across groups by iterating groups (simpler: reuse getGroupsForBranch then per-group fetch)
+  call('getGroupsForBranch', SESSION.token, branch).then(groups => {
+    const promises = groups.map(g => call('getCustomersForGroup', SESSION.token, branch, g.group).then(cs => cs.map(c => Object.assign(c, {group: g.group}))));
+    Promise.all(promises).then(lists => {
+      LOANS_CACHE = { branch: branch, customers: [].concat(...lists) };
+      renderLoansTable();
+    });
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function renderLoansTable(){
+  const filterGroup = document.getElementById('loansGroupFilter').value;
+  const tbody = document.getElementById('loansTableBody');
+  let rows = LOANS_CACHE.customers;
+  if (filterGroup) rows = rows.filter(r => r.group === filterGroup);
+  tbody.innerHTML = '';
+  if (!rows.length){
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:24px;">No records</td></tr>';
+    return;
+  }
+  rows.forEach(c => {
+    tbody.innerHTML += `<tr>
+      <td><b>${c.name}</b></td><td>${c.group}</td><td>${money(c.loanAmt)}</td>
+      <td>${money(c.totalPayable)}</td><td>${money(c.outstanding)}</td><td>${c.disbDate}</td>
+    </tr>`;
+  });
+}
+
+/* ============================================================
+   REPAYMENT HISTORY
+   ============================================================ */
+function loadHistoryPanel(){
+  const sel = document.getElementById('historyBranchFilter');
+  sel.innerHTML = '';
+  if (SESSION.role === 'branch'){
+    sel.innerHTML = `<option value="${SESSION.branch}">${SESSION.branch}</option>`;
+    sel.disabled = true;
+    loadHistory();
+    return;
+  }
+  sel.disabled = false;
+  call('getAccessibleBranches', SESSION.token).then(branches => {
+    sel.innerHTML = '<option value="ALL">All Branches</option>' + branches.map(b => `<option value="${b}">${b}</option>`).join('');
+    loadHistory();
+  });
+}
+
+function loadHistory(){
+  const branch = document.getElementById('historyBranchFilter').value;
+  const tbody = document.getElementById('historyTableBody');
+  tbody.innerHTML = '<tr><td colspan="7" class="loader"><span class="spinner"></span>Loading...</td></tr>';
+  call('getRepaymentHistory', SESSION.token, branch, 500).then(rows => {
+    tbody.innerHTML = '';
+    if (!rows.length){
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);padding:24px;">No repayments recorded yet</td></tr>';
+      return;
+    }
+    rows.forEach(r => {
+      tbody.innerHTML += `<tr>
+        <td class="mono">${r.timestamp}</td><td>${r.customerName}</td><td>${r.group}</td><td>${r.branch}</td>
+        <td><span class="tag">${money(r.amount)}</span></td><td>${r.collectedBy}</td><td>${money(r.balanceAfter)}</td>
+      </tr>`;
+    });
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+/* ============================================================
+   ADMIN: BRANCHES / AREAS
+   ============================================================ */
+function loadBranchesAdmin(){
+  const tbody = document.getElementById('branchesAdminBody');
+  tbody.innerHTML = '<tr><td colspan="3" class="loader"><span class="spinner"></span>Loading...</td></tr>';
+  call('adminGetBranches', SESSION.token).then(branches => {
+    tbody.innerHTML = '';
+    branches.forEach(b => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><b>${b.branch}</b></td>
+        <td><input type="text" value="${b.area || ''}" id="area-${cssSafe(b.branch)}" style="padding:7px 9px;border:1px solid var(--line);border-radius:6px;width:160px;"></td>
+        <td><button class="btn btn-primary btn-small" onclick="saveBranchArea('${escapeJs(b.branch)}')">Save</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+function cssSafe(s){ return String(s).replace(/[^a-zA-Z0-9]/g, '_'); }
+function escapeJs(s){ return String(s).replace(/'/g, "\\'"); }
+
+function saveBranchArea(branch){
+  const val = document.getElementById('area-' + cssSafe(branch)).value.trim();
+  call('adminSetBranchArea', SESSION.token, branch, val).then(() => {
+    showToast('Area updated for ' + branch, 'ok');
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+/* ============================================================
+   ADMIN: USERS
+   ============================================================ */
+function toggleNewUserFields(){
+  const role = document.getElementById('newUserRole').value;
+  document.getElementById('newUserAreaField').style.display = (role === 'area') ? 'block' : 'none';
+  document.getElementById('newUserBranchField').style.display = (role === 'branch') ? 'block' : 'none';
+}
+
+function loadUsersAdmin(){
+  toggleNewUserFields();
+  call('adminGetBranches', SESSION.token).then(branches => {
+    document.getElementById('newUserBranch').innerHTML = branches.map(b => `<option value="${b.branch}">${b.branch}</option>`).join('');
+  });
+  const tbody = document.getElementById('usersTableBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="loader"><span class="spinner"></span>Loading...</td></tr>';
+  call('adminGetUsers', SESSION.token).then(users => {
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      tbody.innerHTML += `<tr>
+        <td class="mono">${u.userId}</td><td>${u.name}</td><td>${u.role}</td><td>${u.area || '-'}</td><td>${u.branch || '-'}</td>
+        <td>
+          <button class="btn btn-ghost btn-small" onclick="resetUserPassword('${escapeJs(u.userId)}')">Reset PW</button>
+          <button class="btn btn-outline-danger btn-small" onclick="deleteUserConfirm('${escapeJs(u.userId)}')">Delete</button>
+        </td>
+      </tr>`;
+    });
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function addUser(){
+  const name = document.getElementById('newUserName').value.trim();
+  const phone = document.getElementById('newUserPhone').value.trim();
+  const role = document.getElementById('newUserRole').value;
+  const area = document.getElementById('newUserArea').value.trim();
+  const branch = document.getElementById('newUserBranch').value;
+  if (!name || !phone){
+    showToast('Name and Phone are required.', 'err');
+    return;
+  }
+  call('adminAddUser', SESSION.token, { userId: phone, name, role, area, branch }).then(() => {
+    showToast('User added. Default password: Sampoorn', 'ok');
+    document.getElementById('newUserName').value = '';
+    document.getElementById('newUserPhone').value = '';
+    document.getElementById('newUserArea').value = '';
+    loadUsersAdmin();
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function resetUserPassword(userId){
+  call('adminResetPassword', SESSION.token, userId).then(() => {
+    showToast('Password reset to default for ' + userId, 'ok');
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+function deleteUserConfirm(userId){
+  if (!confirm('Delete user ' + userId + '? This cannot be undone.')) return;
+  call('adminDeleteUser', SESSION.token, userId).then(() => {
+    showToast('User deleted', 'ok');
+    loadUsersAdmin();
+  }).catch(err => showToast('Error: ' + (err.message || err), 'err'));
+}
+
+/* Allow Enter key to submit login */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  tryRestoreSession();
+});
+
+function tryRestoreSession(){
+  const savedToken = localStorage.getItem('sf_token');
+  if (!savedToken){
+    document.getElementById('bootLoader').style.display = 'none';
+    return;
+  }
+  call('validateSession', savedToken).then(res => {
+    document.getElementById('bootLoader').style.display = 'none';
+    if (!res.success){
+      localStorage.removeItem('sf_token');
+      return; // login screen stays visible
+    }
+    SESSION = res;
+    if (res.mustChangePassword){
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('pwModal').classList.remove('hidden');
+    } else {
+      enterApp();
+    }
+  }).catch(() => {
+    document.getElementById('bootLoader').style.display = 'none';
+    localStorage.removeItem('sf_token');
+  });
+}
+</script>
+</body>
+</html>
