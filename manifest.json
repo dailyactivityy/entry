@@ -1,9 +1,0 @@
-{
-  "name": "",
-  "short_name": "",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#132A3E",
-  "theme_color": "#132A3E",
-  "orientation": "portrait-primary"
-}
