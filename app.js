@@ -111,7 +111,7 @@ function boot() {
     SESSION.role === 'area' ? `Area: ${SESSION.area}` : 'Admin';
 
   const tabs = SESSION.role === 'branch'
-    ? [['collection', 'Collection'], ['disburse', 'Loan Disbursed'], ['summary', 'Summary']]
+    ? [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'], ['summary', 'Summary']]
     : SESSION.role === 'area'
     ? [['areaOverview', 'Overview']]
     : [['adminOverview', 'Overview'], ['staff', 'Staff'], ['logs', 'Logs']];
@@ -134,6 +134,7 @@ function render() {
   const main = document.getElementById('mainContent');
   main.innerHTML = '<p class="muted">Loading...</p>';
   if (activeTab === 'collection') renderCollection();
+  else if (activeTab === 'dailysheet') renderDailySheet();
   else if (activeTab === 'disburse') renderDisburse();
   else if (activeTab === 'summary') renderBranchSummary();
   else if (activeTab === 'areaOverview') renderAreaOverview();
@@ -180,7 +181,12 @@ async function loadCustomersForGroup() {
       wrap.innerHTML = '<div class="empty-state">No customers in this group</div>';
       return;
     }
-    wrap.innerHTML = customers.map(c => `
+    wrap.innerHTML = customers.map(c => {
+      const emiNum = Number(c.emi);
+      const hasEmi = isFinite(emiNum) && String(c.emi).trim() !== '';
+      const outstanding = Number(c.currentOutstanding) || 0;
+      const prefill = hasEmi ? Math.max(0, Math.min(emiNum, outstanding)) : '';
+      return `
       <div class="cust-row" data-id="${c.customerId}">
         <div class="cust-info">
           <div class="cust-name">${escapeHtml(c.name)}</div>
@@ -188,10 +194,11 @@ async function loadCustomersForGroup() {
           <div class="cust-outstanding">Outstanding: <b>${money(c.currentOutstanding)}</b></div>
         </div>
         <div class="cust-action">
-          <input type="number" min="1" placeholder="Amt" class="putAmtInput" />
+          <input type="number" min="0" placeholder="Amt" class="putAmtInput" value="${prefill}" />
           <button class="btn-submit-row">Submit</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     wrap.querySelectorAll('.cust-row').forEach(row => {
       const id = row.dataset.id;
@@ -199,7 +206,7 @@ async function loadCustomersForGroup() {
       const input = row.querySelector('.putAmtInput');
       btn.addEventListener('click', async () => {
         const amt = Number(input.value);
-        if (!amt || amt <= 0) { toast('Please enter a valid amount', true); return; }
+        if (input.value === '' || isNaN(amt) || amt < 0) { toast('Please enter a valid amount (0 or more)', true); return; }
         btn.disabled = true; btn.textContent = '...';
         try {
           const data = await api('submitCollection', { customerId: id, putAmt: amt });
@@ -214,6 +221,57 @@ async function loadCustomersForGroup() {
     });
   } catch (err) {
     wrap.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+// ============================================================
+// BRANCH: DAILYSHEET
+// ============================================================
+async function renderDailySheet() {
+  const main = document.getElementById('mainContent');
+  try {
+    const s = await api('getDailySheet');
+    const cols = [
+      ['groupName', 'Group Name', false],
+      ['realizable', 'Realizable', true],
+      ['realised', 'Realised', true],
+      ['advance', 'Advance', true],
+      ['overdue', 'Overdue', true],
+      ['loanCloser', 'Loan Closer', true],
+      ['netCollection', 'Net Collection', true],
+      ['fulpaidNo', 'Fulpaid No', false],
+      ['loanNo', 'Loan No', false],
+      ['loanAmt', 'Loan Amt', true]
+    ];
+    const fmt = (key, val) => key === 'groupName' ? escapeHtml(val) : (key.toLowerCase().includes('no') ? val : money(val));
+
+    main.innerHTML = `
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <h3 style="margin:0;">Today's Overview</h3>
+      <div class="muted">${escapeHtml(s.dateLabel)}</div>
+    </div>
+    <div class="card">
+      ${s.rows.length ? `<div class="table-wrap"><table>
+        <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${s.rows.map(r => `<tr>${cols.map(([key]) => `<td>${fmt(key, r[key])}</td>`).join('')}</tr>`).join('')}
+          <tr style="font-weight:800; border-top:2px solid var(--navy);">
+            <td>Total</td>
+            <td>${money(s.total.realizable)}</td>
+            <td>${money(s.total.realised)}</td>
+            <td>${money(s.total.advance)}</td>
+            <td>${money(s.total.overdue)}</td>
+            <td>${money(s.total.loanCloser)}</td>
+            <td>${money(s.total.netCollection)}</td>
+            <td>${s.total.fulpaidNo}</td>
+            <td>${s.total.loanNo}</td>
+            <td>${money(s.total.loanAmt)}</td>
+          </tr>
+        </tbody>
+      </table></div>` : '<div class="empty-state">No group activity for today yet</div>'}
+    </div>`;
+  } catch (err) {
+    main.innerHTML = `<p class="error">${err.message}</p>`;
   }
 }
 
