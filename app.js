@@ -381,11 +381,9 @@ async function loadRecentDisb() {
 // ============================================================
 // BRANCH: SUMMARY
 // ============================================================
-async function renderBranchSummary() {
-  const main = document.getElementById('mainContent');
-  try {
-    const s = await api('getBranchSummary');
-    main.innerHTML = `
+// Shared stat-card grid used by Branch Summary, Area Overview, Admin Overview and branch drill-down.
+function statCardsHtml(s) {
+  return `
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Total Customers</div><div class="value">${s.customerCount}</div></div>
       <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
@@ -393,11 +391,22 @@ async function renderBranchSummary() {
       <div class="stat-card"><div class="label">Today's Collection Count</div><div class="value">${s.todayCollectionCount}</div></div>
     </div>
     <div class="stat-grid">
+      <div class="stat-card"><div class="label">Realizable Amt</div><div class="value">${money(s.realizableAmt)}</div></div>
+      <div class="stat-card"><div class="label">Realizable No</div><div class="value">${s.realizableNo}</div></div>
       <div class="stat-card"><div class="label">Overdue No</div><div class="value">${s.overdueNo}</div></div>
       <div class="stat-card"><div class="label">Overdue Outstanding</div><div class="value">${money(s.overdueOutstanding)}</div></div>
+    </div>
+    <div class="stat-grid">
       <div class="stat-card"><div class="label">Death No</div><div class="value">${s.deathNo}</div></div>
       <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(s.deathOutstanding)}</div></div>
     </div>`;
+}
+
+async function renderBranchSummary() {
+  const main = document.getElementById('mainContent');
+  try {
+    const s = await api('getBranchSummary');
+    main.innerHTML = statCardsHtml(s);
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
@@ -498,11 +507,8 @@ async function renderAreaOverview() {
       return;
     }
     main.innerHTML = `
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Area</div><div class="value">${escapeHtml(s.area)}</div></div>
-      <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
-    </div>
+    <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(s.area)} Area</h3></div>
+    ${statCardsHtml(s)}
     <div class="card"><h3>Branches</h3>
       ${s.branches.map(b => `
         <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
@@ -522,12 +528,8 @@ function branchDetailHtml(b, showBack) {
   if (!b) return '<p class="muted">No data found</p>';
   return `
   ${showBack ? `<button id="backBtn" class="back-link">&larr; Back to branch list</button>` : ''}
-  <div class="stat-grid">
-    <div class="stat-card"><div class="label">Branch</div><div class="value">${escapeHtml(b.branch)}</div></div>
-    <div class="stat-card"><div class="label">Customers</div><div class="value">${b.customerCount}</div></div>
-    <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(b.totalOutstanding)}</div></div>
-    <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(b.todayCollectionTotal)}</div></div>
-  </div>
+  <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(b.branch)}</h3></div>
+  ${statCardsHtml(b)}
   <div class="card"><h3>Recent Collections</h3>
     ${b.recentCollections.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
       ${b.recentCollections.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
@@ -560,11 +562,8 @@ async function renderAdminOverview() {
       const area = s.areas.find(a => a.area === adminDrilldownArea);
       main.innerHTML = `
       <button id="backBtn2" class="back-link">&larr; Back to all areas</button>
-      <div class="stat-grid">
-        <div class="stat-card"><div class="label">Area</div><div class="value">${escapeHtml(area.area)}</div></div>
-        <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(area.totalOutstanding)}</div></div>
-        <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(area.todayCollectionTotal)}</div></div>
-      </div>
+      <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(area.area)} Area</h3></div>
+      ${statCardsHtml(area)}
       <div class="card"><h3>Branches</h3>
         ${area.branches.map(b => `
           <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
@@ -579,14 +578,18 @@ async function renderAdminOverview() {
       return;
     }
     main.innerHTML = `
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Grand Total Outstanding</div><div class="value">${money(s.grandTotalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Today's Total Collection</div><div class="value green">${money(s.grandTodayCollection)}</div></div>
-    </div>
+    <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">All Branches — Grand Total</h3></div>
+    ${statCardsHtml({
+      customerCount: s.grandCustomerCount, totalOutstanding: s.grandTotalOutstanding,
+      todayCollectionTotal: s.grandTodayCollection, todayCollectionCount: s.grandTodayCollectionCount,
+      realizableAmt: s.grandRealizableAmt, realizableNo: s.grandRealizableNo,
+      overdueNo: s.grandOverdueNo, overdueOutstanding: s.grandOverdueOutstanding,
+      deathNo: s.grandDeathNo, deathOutstanding: s.grandDeathOutstanding
+    })}
     <div class="card"><h3>Areas</h3>
       ${s.areas.map(a => `
         <div class="branch-list-item" data-a="${escapeHtml(a.area)}">
-          <div><div class="name">${escapeHtml(a.area)}</div><div class="sub">${a.branches.length} branches · Aaj ${money(a.todayCollectionTotal)}</div></div>
+          <div><div class="name">${escapeHtml(a.area)}</div><div class="sub">${a.branches.length} branches · Today ${money(a.todayCollectionTotal)}</div></div>
           <div class="amt">${money(a.totalOutstanding)}</div>
         </div>`).join('')}
     </div>`;
