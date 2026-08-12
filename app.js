@@ -23,7 +23,7 @@ async function api(action, payload = {}) {
     body: JSON.stringify(body)
   });
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Kuch galat ho gaya');
+  if (!data.ok) throw new Error(data.error || 'Something went wrong');
   return data;
 }
 
@@ -91,7 +91,7 @@ document.getElementById('pwForm').addEventListener('submit', async (e) => {
     localStorage.setItem('sf_session', JSON.stringify(SESSION));
     document.getElementById('pwModal').classList.add('hidden');
     document.getElementById('pwForm').reset();
-    toast('Password change ho gaya');
+    toast('Password changed successfully');
   } catch (err) {
     errEl.textContent = err.message;
     errEl.classList.remove('hidden');
@@ -132,7 +132,7 @@ function boot() {
 function render() {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.key === activeTab));
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<p class="muted">Load ho raha hai...</p>';
+  main.innerHTML = '<p class="muted">Loading...</p>';
   if (activeTab === 'collection') renderCollection();
   else if (activeTab === 'disburse') renderDisburse();
   else if (activeTab === 'summary') renderBranchSummary();
@@ -152,9 +152,9 @@ async function renderCollection() {
   try {
     const { groups } = await api('getGroups');
     let html = `<div class="card">
-      <h3>Group Select Karein</h3>
+      <h3>Select Group</h3>
       <div class="field"><select id="groupSelect">
-        <option value="">-- Group चुनें --</option>
+        <option value="">-- Select Group --</option>
         ${groups.map(g => `<option value="${escapeHtml(g)}" ${g === selectedGroup ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('')}
       </select></div>
     </div>
@@ -173,11 +173,11 @@ async function renderCollection() {
 async function loadCustomersForGroup() {
   const wrap = document.getElementById('custList');
   if (!selectedGroup) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = '<p class="muted">Load ho raha hai...</p>';
+  wrap.innerHTML = '<p class="muted">Loading...</p>';
   try {
     const { customers } = await api('getCustomers', { group: selectedGroup });
     if (customers.length === 0) {
-      wrap.innerHTML = '<div class="empty-state">Is group me koi customer nahi hai</div>';
+      wrap.innerHTML = '<div class="empty-state">No customers in this group</div>';
       return;
     }
     wrap.innerHTML = customers.map(c => `
@@ -199,13 +199,13 @@ async function loadCustomersForGroup() {
       const input = row.querySelector('.putAmtInput');
       btn.addEventListener('click', async () => {
         const amt = Number(input.value);
-        if (!amt || amt <= 0) { toast('Sahi amount dalein', true); return; }
+        if (!amt || amt <= 0) { toast('Please enter a valid amount', true); return; }
         btn.disabled = true; btn.textContent = '...';
         try {
           const data = await api('submitCollection', { customerId: id, putAmt: amt });
           row.querySelector('.cust-outstanding').innerHTML = `Outstanding: <b>${money(data.newOutstanding)}</b>`;
-          row.querySelector('.cust-action').innerHTML = `<span class="badge-done">Submit ho gaya ✓</span>`;
-          toast('Collection submit ho gaya');
+          row.querySelector('.cust-action').innerHTML = `<span class="badge-done">Submitted ✓</span>`;
+          toast('Collection submitted');
         } catch (err) {
           toast(err.message, true);
           btn.disabled = false; btn.textContent = 'Submit';
@@ -224,7 +224,7 @@ async function renderDisburse() {
   const main = document.getElementById('mainContent');
   main.innerHTML = `
   <div class="card">
-    <h3>Naya Loan Disburse Karein</h3>
+    <h3>Add New Loan Disbursement</h3>
     <form id="disburseForm">
       <div class="field-row">
         <div class="field"><label>Day</label>
@@ -233,7 +233,10 @@ async function renderDisburse() {
             <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
           </select>
         </div>
-        <div class="field"><label>Group Name</label><input id="d_group" required /></div>
+        <div class="field"><label>Group Name</label>
+          <input id="d_group" list="d_groupList" required autocomplete="off" placeholder="Select or type a group" />
+          <datalist id="d_groupList"></datalist>
+        </div>
       </div>
       <div class="field"><label>Customer Name</label><input id="d_name" required /></div>
       <div class="field-row">
@@ -253,11 +256,14 @@ async function renderDisburse() {
         <div class="field"><label>A/C No</label><input id="d_ac" /></div>
         <div class="field"><label>IFSC Code</label><input id="d_ifsc" /></div>
       </div>
-      <button class="btn-primary" type="submit">Loan Disburse Karein</button>
+      <button class="btn-primary" type="submit">Disburse Loan</button>
       <p id="disburseError" class="error hidden"></p>
     </form>
   </div>
-  <div class="card"><h3>Recent Disbursements</h3><div id="recentDisb"><p class="muted">Load ho raha hai...</p></div></div>`;
+  <div class="card"><h3>Recent Disbursements</h3><div id="recentDisb"><p class="muted">Loading...</p></div></div>`;
+
+  document.getElementById('d_day').addEventListener('change', loadGroupsForDay);
+  loadGroupsForDay(); // load groups for the default selected day
 
   document.getElementById('disburseForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -271,8 +277,9 @@ async function renderDisburse() {
     };
     try {
       await api('addDisbursement', payload);
-      toast('Loan disburse ho gaya');
+      toast('Loan disbursed successfully');
       e.target.reset();
+      loadGroupsForDay();
       loadRecentDisb();
     } catch (err) {
       errEl.textContent = err.message;
@@ -282,14 +289,25 @@ async function renderDisburse() {
   loadRecentDisb();
 }
 
+async function loadGroupsForDay() {
+  const day = val('d_day');
+  try {
+    const { groups } = await api('getGroups', { day });
+    const list = document.getElementById('d_groupList');
+    if (list) list.innerHTML = groups.map(g => `<option value="${escapeHtml(g)}"></option>`).join('');
+  } catch (err) {
+    // silently ignore - group suggestions are a convenience, not required
+  }
+}
+
 function val(id) { return document.getElementById(id).value; }
 
 async function loadRecentDisb() {
   const wrap = document.getElementById('recentDisb');
   try {
     const { recentDisbursements } = await api('getBranchSummary');
-    if (!recentDisbursements.length) { wrap.innerHTML = '<div class="empty-state">Abhi tak koi disbursement nahi</div>'; return; }
-    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Naam</th><th>Group</th><th>Amt</th><th>Date</th></tr></thead><tbody>
+    if (!recentDisbursements.length) { wrap.innerHTML = '<div class="empty-state">No disbursements yet</div>'; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Group</th><th>Amt</th><th>Date</th></tr></thead><tbody>
       ${recentDisbursements.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.LoanAmt)}</td><td>${escapeHtml(String(r.DisbDate))}</td></tr>`).join('')}
     </tbody></table></div>`;
   } catch (err) {
@@ -308,13 +326,13 @@ async function renderBranchSummary() {
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Total Customers</div><div class="value">${s.customerCount}</div></div>
       <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Aaj Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
-      <div class="stat-card"><div class="label">Aaj Collection Count</div><div class="value">${s.todayCollectionCount}</div></div>
+      <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
+      <div class="stat-card"><div class="label">Today's Collection Count</div><div class="value">${s.todayCollectionCount}</div></div>
     </div>
     <div class="card"><h3>Recent Collections</h3>
       ${s.recentCollections.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
         ${s.recentCollections.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
-      </tbody></table></div>` : '<div class="empty-state">Abhi tak koi collection nahi</div>'}
+      </tbody></table></div>` : '<div class="empty-state">No collections yet</div>'}
     </div>`;
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
@@ -338,12 +356,12 @@ async function renderAreaOverview() {
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Area</div><div class="value">${escapeHtml(s.area)}</div></div>
       <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Aaj Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
+      <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
     </div>
     <div class="card"><h3>Branches</h3>
       ${s.branches.map(b => `
         <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
-          <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Aaj ${money(b.todayCollectionTotal)}</div></div>
+          <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Today ${money(b.todayCollectionTotal)}</div></div>
           <div class="amt">${money(b.totalOutstanding)}</div>
         </div>`).join('')}
     </div>`;
@@ -356,24 +374,24 @@ async function renderAreaOverview() {
 }
 
 function branchDetailHtml(b, showBack) {
-  if (!b) return '<p class="muted">Data nahi mila</p>';
+  if (!b) return '<p class="muted">No data found</p>';
   return `
-  ${showBack ? `<button id="backBtn" class="back-link">&larr; Branch list par wapas jaayein</button>` : ''}
+  ${showBack ? `<button id="backBtn" class="back-link">&larr; Back to branch list</button>` : ''}
   <div class="stat-grid">
     <div class="stat-card"><div class="label">Branch</div><div class="value">${escapeHtml(b.branch)}</div></div>
     <div class="stat-card"><div class="label">Customers</div><div class="value">${b.customerCount}</div></div>
     <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(b.totalOutstanding)}</div></div>
-    <div class="stat-card"><div class="label">Aaj Collection</div><div class="value green">${money(b.todayCollectionTotal)}</div></div>
+    <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(b.todayCollectionTotal)}</div></div>
   </div>
   <div class="card"><h3>Recent Collections</h3>
     ${b.recentCollections.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
       ${b.recentCollections.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="empty-state">Abhi tak koi collection nahi</div>'}
+    </tbody></table></div>` : '<div class="empty-state">No collections yet</div>'}
   </div>
   <div class="card"><h3>Recent Disbursements</h3>
     ${b.recentDisbursements.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th></tr></thead><tbody>
       ${b.recentDisbursements.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.LoanAmt)}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="empty-state">Abhi tak koi disbursement nahi</div>'}
+    </tbody></table></div>` : '<div class="empty-state">No disbursements yet</div>'}
   </div>`;
 }
 
@@ -396,16 +414,16 @@ async function renderAdminOverview() {
     if (adminDrilldownArea) {
       const area = s.areas.find(a => a.area === adminDrilldownArea);
       main.innerHTML = `
-      <button id="backBtn2" class="back-link">&larr; Sabhi Areas par wapas jaayein</button>
+      <button id="backBtn2" class="back-link">&larr; Back to all areas</button>
       <div class="stat-grid">
         <div class="stat-card"><div class="label">Area</div><div class="value">${escapeHtml(area.area)}</div></div>
         <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(area.totalOutstanding)}</div></div>
-        <div class="stat-card"><div class="label">Aaj Collection</div><div class="value green">${money(area.todayCollectionTotal)}</div></div>
+        <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(area.todayCollectionTotal)}</div></div>
       </div>
       <div class="card"><h3>Branches</h3>
         ${area.branches.map(b => `
           <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
-            <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Aaj ${money(b.todayCollectionTotal)}</div></div>
+            <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Today ${money(b.todayCollectionTotal)}</div></div>
             <div class="amt">${money(b.totalOutstanding)}</div>
           </div>`).join('')}
       </div>`;
@@ -418,7 +436,7 @@ async function renderAdminOverview() {
     main.innerHTML = `
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Grand Total Outstanding</div><div class="value">${money(s.grandTotalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Aaj Total Collection</div><div class="value green">${money(s.grandTodayCollection)}</div></div>
+      <div class="stat-card"><div class="label">Today's Total Collection</div><div class="value green">${money(s.grandTodayCollection)}</div></div>
     </div>
     <div class="card"><h3>Areas</h3>
       ${s.areas.map(a => `
@@ -442,9 +460,9 @@ async function renderStaff() {
   const main = document.getElementById('mainContent');
   main.innerHTML = `
   <div class="card">
-    <h3>Naya Staff Add Karein</h3>
+    <h3>Add New Staff</h3>
     <form id="staffForm">
-      <div class="field"><label>Naam</label><input id="s_name" required /></div>
+      <div class="field"><label>Name</label><input id="s_name" required /></div>
       <div class="field"><label>Phone (Login ID)</label><input id="s_phone" required /></div>
       <div class="field"><label>Role</label>
         <select id="s_role">
@@ -455,12 +473,12 @@ async function renderStaff() {
       </div>
       <div class="field" id="s_branchField"><label>Branch</label><input id="s_branch" /></div>
       <div class="field" id="s_areaField"><label>Area</label><input id="s_area" /></div>
-      <button class="btn-primary" type="submit">Staff Add Karein</button>
-      <p class="muted">Default password: <b>Sampoorn</b> (staff ko pehli login par change karna hoga)</p>
+      <button class="btn-primary" type="submit">Add Staff</button>
+      <p class="muted">Default password: <b>Sampoorn</b> (staff must change it on first login)</p>
       <p id="staffError" class="error hidden"></p>
     </form>
   </div>
-  <div class="card"><h3>Sabhi Staff</h3><div id="staffListWrap"><p class="muted">Load ho raha hai...</p></div></div>`;
+  <div class="card"><h3>All Staff</h3><div id="staffListWrap"><p class="muted">Loading...</p></div></div>`;
 
   document.getElementById('staffForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -471,7 +489,7 @@ async function renderStaff() {
         name: val('s_name'), phone: val('s_phone'), role: val('s_role'),
         branch: val('s_branch'), area: val('s_area')
       });
-      toast('Staff add ho gaya');
+      toast('Staff added successfully');
       e.target.reset();
       loadStaffList();
     } catch (err) {
@@ -486,7 +504,7 @@ async function loadStaffList() {
   const wrap = document.getElementById('staffListWrap');
   try {
     const { staff } = await api('getStaffList');
-    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Naam</th><th>Phone</th><th>Role</th><th>Branch/Area</th><th></th></tr></thead><tbody>
+    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Branch/Area</th><th></th></tr></thead><tbody>
       ${staff.map(s => `<tr>
         <td>${escapeHtml(s.name)}</td><td>${escapeHtml(String(s.phone))}</td><td>${escapeHtml(s.role)}</td>
         <td>${escapeHtml(s.branch || s.area || '-')}</td>
@@ -497,7 +515,7 @@ async function loadStaffList() {
       b.addEventListener('click', async () => {
         try {
           await api('resetStaffPassword', { phone: b.dataset.p });
-          toast('Password reset ho gaya -> Sampoorn');
+          toast('Password reset to Sampoorn');
         } catch (err) { toast(err.message, true); }
       });
     });
