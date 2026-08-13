@@ -584,26 +584,16 @@ async function renderAreaOverview() {
   const main = document.getElementById('mainContent');
   try {
     const s = await api('getAreaSummary');
-    if (areaDrilldownBranch) {
-      const b = s.branches.find(x => x.branch === areaDrilldownBranch);
-      main.innerHTML = branchDetailHtml(b, true);
-      document.getElementById('backBtn').onclick = () => { areaDrilldownBranch = null; renderAreaOverview(); };
-      wireOpenCashCard();
-      return;
-    }
     main.innerHTML = `
     <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(s.area)} Area</h3></div>
     ${statCardsHtml(s)}
     <div class="card"><h3>Branches</h3>
       ${s.branches.map(b => `
-        <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
+        <div class="branch-list-item" style="cursor:default;">
           <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Today ${money(b.todayCollectionTotal)}</div></div>
           <div class="amt">${money(b.totalOutstanding)}</div>
         </div>`).join('')}
     </div>`;
-    main.querySelectorAll('.branch-list-item').forEach(el => {
-      el.addEventListener('click', () => { areaDrilldownBranch = el.dataset.b; renderAreaOverview(); });
-    });
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
