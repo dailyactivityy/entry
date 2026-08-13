@@ -681,8 +681,8 @@ async function renderLogs() {
     const { collections, disbursements } = await api('getLogs');
     main.innerHTML = `
     <div class="card"><h3>Recent Collections (last 200)</h3>
-      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
-        ${collections.map(r => `<tr><td>${fmtDate(r.Timestamp)}</td><td>${escapeHtml(r.Branch)}</td><td>${escapeHtml(r.CustomerName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th><th>Staff</th><th></th></tr></thead><tbody>
+        ${collections.map(r => `<tr><td>${fmtDate(r.Timestamp)}</td><td>${escapeHtml(r.Branch)}</td><td>${escapeHtml(r.CustomerName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td><td><button class="btn-ghost deleteCollBtn" data-row="${r._row}" data-amt="${money(r.PutAmt)}" data-cust="${escapeHtml(r.CustomerName)}" style="color:#B3261E;border-color:#E4E9ED;">Delete</button></td></tr>`).join('')}
       </tbody></table></div>
     </div>
     <div class="card"><h3>Recent Disbursements (last 200)</h3>
@@ -690,6 +690,17 @@ async function renderLogs() {
         ${disbursements.map(r => `<tr><td>${fmtDate(r.Timestamp)}</td><td>${escapeHtml(r.Branch)}</td><td>${escapeHtml(r.CustomerName)}</td><td>${money(r.LoanAmt)}</td></tr>`).join('')}
       </tbody></table></div>
     </div>`;
+    main.querySelectorAll('.deleteCollBtn').forEach(b => {
+      b.addEventListener('click', async () => {
+        const ok = confirm(`Delete this collection of ${b.dataset.amt} for ${b.dataset.cust}?\nThis will add the amount back to their outstanding balance.`);
+        if (!ok) return;
+        try {
+          await api('deleteCollection', { row: Number(b.dataset.row) });
+          toast('Collection deleted, outstanding restored');
+          renderLogs();
+        } catch (err) { toast(err.message, true); }
+      });
+    });
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
