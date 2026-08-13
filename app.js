@@ -742,21 +742,54 @@ async function loadAMDailySummary() {
   try {
     const s = await api('getAreaDailySheetSummary', { date: amDailyDate });
     const cols = [
-      ['branch', 'Branch', false], ['realizable', 'Realizable', true], ['realised', 'Realised', true],
-      ['advance', 'Advance', true], ['overdue', 'Overdue', true], ['loanCloser', 'Loan Closer', true],
-      ['netCollection', 'Net Collection', true], ['fulpaidNo', 'Fulpaid No', false],
-      ['loanNo', 'Loan No', false], ['loanAmt', 'Loan Amt', true]
+      ['branch', 'Branch'], ['openCash', 'Open Cash'], ['realizable', 'Realizable'], ['realised', 'Realised'],
+      ['advance', 'Advance'], ['overdue', 'Overdue'], ['loanCloser', 'Loan Closer'], ['netCollection', 'Net Collection'],
+      ['miscInc', 'Misc Inc'], ['totalIncome', 'Total Income'], ['fulpaidNo', 'Fulpaid No'], ['loanNo', 'Loan No'],
+      ['loanAmt', 'Loan Amt'], ['transaction', 'Transaction'], ['miscExp', 'Misc Exp'], ['totalExpense', 'Total Expense'],
+      ['closeCash', 'Close Cash']
     ];
-    const fmt = (key, v) => key === 'branch' ? escapeHtml(v) : (key.toLowerCase().includes('no') ? v : money(v));
+    const editableKeys = ['openCash', 'miscInc', 'miscExp'];
+    const countKeys = ['fulpaidNo', 'loanNo'];
+
+    const branchRowHtml = (r) => cols.map(([key]) => {
+      if (key === 'branch') return `<td><a href="#" class="am-branch-link" data-b="${escapeHtml(r.branch)}" style="color:var(--navy); font-weight:700;">${escapeHtml(r.branch)}</a></td>`;
+      if (editableKeys.includes(key)) return `<td><input type="number" class="am-cash-input" data-field="${key}" value="${Number(r[key]) || 0}" style="width:80px; padding:6px 8px; border:1.5px solid var(--line); border-radius:6px;" /></td>`;
+      if (countKeys.includes(key)) return `<td>${r[key]}</td>`;
+      return `<td>${money(r[key])}</td>`;
+    }).join('');
+
+    const totalRowHtml = cols.map(([key]) => {
+      if (key === 'branch') return `<td>Total</td>`;
+      if (countKeys.includes(key)) return `<td>${s.total[key] || 0}</td>`;
+      return `<td>${money(s.total[key] || 0)}</td>`;
+    }).join('');
+
     wrap.innerHTML = `<div class="card">
       ${s.branches.length ? `<div class="table-wrap"><table>
-        <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
+        <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}<th></th></tr></thead>
         <tbody>
-          ${s.branches.map(r => `<tr class="branch-row-clickable" data-b="${escapeHtml(r.branch)}" style="cursor:pointer;">${cols.map(([key]) => `<td>${fmt(key, r[key])}</td>`).join('')}</tr>`).join('')}
+          ${s.branches.map(r => `<tr data-branch="${escapeHtml(r.branch)}">${branchRowHtml(r)}<td><button class="btn-ghost am-cash-save">Save</button></td></tr>`).join('')}
+          <tr style="font-weight:800; border-top:2px solid var(--navy);">${totalRowHtml}<td></td></tr>
         </tbody>
       </table></div>` : '<div class="empty-state">No branches found</div>'}
     </div>`;
-    wrap.querySelectorAll('.branch-row-clickable').forEach(tr => tr.addEventListener('click', () => openAMBranchDailyPopup(tr.dataset.b)));
+
+    wrap.querySelectorAll('.am-branch-link').forEach(a => {
+      a.addEventListener('click', (e) => { e.preventDefault(); openAMBranchDailyPopup(a.dataset.b); });
+    });
+    wrap.querySelectorAll('tr[data-branch]').forEach(tr => {
+      tr.querySelector('.am-cash-save').addEventListener('click', async () => {
+        const branch = tr.dataset.branch;
+        const openCash = tr.querySelector('[data-field="openCash"]').value;
+        const miscInc = tr.querySelector('[data-field="miscInc"]').value;
+        const miscExp = tr.querySelector('[data-field="miscExp"]').value;
+        try {
+          await api('saveCashBookEntry', { branch, date: amDailyDate, openCash, miscInc, miscExp });
+          toast('Cash book updated');
+          loadAMDailySummary();
+        } catch (err) { toast(err.message, true); }
+      });
+    });
   } catch (err) {
     wrap.innerHTML = `<p class="error">${err.message}</p>`;
   }
