@@ -167,7 +167,8 @@ function boot() {
   let tabs;
   if (BRANCH_ROLES.includes(role)) {
     tabs = [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
-       ['summary', 'Summary'], ['creategroup', 'Create Group'], ['transaction', 'Transaction'], ['report', 'Report']];
+       ['summary', 'Summary'], ['creategroup', 'Create Group'], ['transaction', 'Transaction'],
+       ['history', 'History'], ['report', 'Report']];
   } else if (role === AREA_ROLE) {
     tabs = [['areaOverview', 'Overview'], ['amCollection', 'Collection'], ['amDailysheet', 'Dailysheet'],
        ['amDisburse', 'Loan Disbursed'], ['amTransaction', 'Transaction'], ['report', 'Report']];
@@ -201,6 +202,7 @@ function render() {
   else if (activeTab === 'summary') renderBranchSummary();
   else if (activeTab === 'creategroup') renderCreateGroup();
   else if (activeTab === 'transaction') renderTransaction();
+  else if (activeTab === 'history') renderHistory();
   else if (activeTab === 'areaOverview') renderAreaOverview();
   else if (activeTab === 'amCollection') renderAMCollection();
   else if (activeTab === 'amDailysheet') renderAMDailySheet();
@@ -530,6 +532,87 @@ async function renderCreateGroup() {
 // ============================================================
 // BRANCH: TRANSACTION
 // ============================================================
+// ============================================================
+// BRANCH: REPAYMENT HISTORY (search or browse by group)
+// ============================================================
+async function renderHistory() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+  <div class="card">
+    <h3>Repayment History</h3>
+    <div class="field"><label>Search by Name / Phone / Customer ID</label><input id="h_search" placeholder="Type to search..." /></div>
+  </div>
+  <div class="card">
+    <h3>Or Browse by Group</h3>
+    <div class="field"><label>Group</label><select id="h_group"><option value="">-- Select Group --</option></select></div>
+  </div>
+  <div id="historyResults"></div>`;
+
+  try {
+    const { groups } = await api('getGroups');
+    document.getElementById('h_group').innerHTML = `<option value="">-- Select Group --</option>` +
+      groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+  } catch (err) { /* ignore - search still works */ }
+
+  let searchTimer = null;
+  document.getElementById('h_search').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    const q = e.target.value.trim();
+    if (!q) { document.getElementById('historyResults').innerHTML = ''; return; }
+    searchTimer = setTimeout(async () => {
+      try {
+        const { customers } = await api('searchCustomers', { query: q });
+        renderHistoryCustomerList(customers);
+      } catch (err) { toast(err.message, true); }
+    }, 300);
+  });
+
+  document.getElementById('h_group').addEventListener('change', async (e) => {
+    if (!e.target.value) { document.getElementById('historyResults').innerHTML = ''; return; }
+    try {
+      const { customers } = await api('getBranchGroupCustomers', { group: e.target.value });
+      renderHistoryCustomerList(customers);
+    } catch (err) { toast(err.message, true); }
+  });
+}
+
+function renderHistoryCustomerList(customers) {
+  const wrap = document.getElementById('historyResults');
+  if (!customers.length) { wrap.innerHTML = '<div class="empty-state">No customers found</div>'; return; }
+  wrap.innerHTML = `<div class="card">${customers.map(c => `
+    <div class="cust-row" data-id="${escapeHtml(c.customerId)}" style="cursor:pointer;">
+      <div class="cust-info">
+        <div class="cust-name">${escapeHtml(c.name)} ${c.status === 'Closed' ? '<span class="muted">(Closed)</span>' : ''}</div>
+        <div class="cust-sub">${escapeHtml(c.phNo || '')} · ${escapeHtml(c.groupName || '')}</div>
+      </div>
+      <div class="cust-action"><span class="muted">Outstanding: ${money(c.currentOutstanding)}</span></div>
+    </div>`).join('')}</div>`;
+  wrap.querySelectorAll('.cust-row').forEach(row => {
+    row.addEventListener('click', () => openRepaymentHistoryPopup(row.dataset.id));
+  });
+}
+
+async function openRepaymentHistoryPopup(customerId) {
+  showPopup('Repayment History', '<p class="muted">Loading...</p>');
+  try {
+    const { customer: c, status, history } = await api('getCustomerRepaymentHistory', { customerId });
+    const totalPaid = history.reduce((s, r) => s + (Number(r.putAmt) || 0), 0);
+    const body = `
+      <div class="stat-grid" style="margin-bottom:16px;">
+        <div class="stat-card"><div class="label">Loan Amt</div><div class="value">${money(c.LoanAmt)}</div></div>
+        <div class="stat-card"><div class="label">Outstanding</div><div class="value">${money(c.CurrentOutstanding)}</div></div>
+        <div class="stat-card"><div class="label">Total Paid</div><div class="value green">${money(totalPaid)}</div></div>
+        <div class="stat-card"><div class="label">Payments Made</div><div class="value">${history.length}</div></div>
+      </div>
+      ${history.length ? `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Staff</th><th>Outstanding After</th></tr></thead><tbody>
+        ${history.map(r => `<tr><td>${fmtDate(r.timestamp)}</td><td>${money(r.putAmt)}</td><td>${escapeHtml(r.staffName)}</td><td>${money(r.outstandingAfter)}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty-state">No payments recorded yet</div>'}`;
+    showPopup(`Repayment History - ${escapeHtml(c.CustomerName)} ${status === 'Closed' ? '(Closed)' : ''}`, body);
+  } catch (err) {
+    showPopup('Repayment History', `<p class="error">${err.message}</p>`);
+  }
+}
+
 async function renderTransaction() {
   const main = document.getElementById('mainContent');
   main.innerHTML = `
