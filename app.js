@@ -471,12 +471,13 @@ function statCardsHtml(s) {
       <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(s.deathOutstanding)}</div></div>
     </div>
     ${s.closeCash !== undefined ? `
+    ${s.cashStarted === false ? `
+    <div class="card"><p class="muted" style="margin:0;">Cash tracking hasn't started for this branch yet - ask Admin to set today's Open Cash.</p></div>
+    ` : `
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Open Cash</div><div class="value">${money(s.openCash)}</div></div>
       <div class="stat-card"><div class="label">Close Cash</div><div class="value green">${money(s.closeCash)}</div></div>
-      <div class="stat-card"><div class="label">Ledger Customers</div><div class="value">${s.ledgerCustomers}</div></div>
-      <div class="stat-card"><div class="label">Ledger Outstanding</div><div class="value">${money(s.ledgerOutstanding)}</div></div>
-    </div>` : ''}`;
+    </div>`}` : ''}`;
 }
 
 async function renderBranchSummary() {
