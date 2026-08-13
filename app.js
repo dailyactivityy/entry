@@ -12,6 +12,31 @@ let SESSION = JSON.parse(localStorage.getItem('sf_session') || 'null');
 let activeTab = null;
 let areaDrilldownBranch = null; // for admin/area: which branch is expanded
 
+// ---- Roles ----
+const BRANCH_ROLES = ['CO', 'SCO', 'BM'];       // work inside a single branch
+const AREA_ROLE = 'AM';                          // heads all branches in an area
+const ALL_BRANCH_ROLES = ['AUDIT', 'HO', 'ADMIN']; // see every branch/area
+const ROLE_LABELS = { CO: 'C.O', SCO: 'S.C.O', BM: 'B.M', AM: 'A.M', AUDIT: 'Audit', HO: 'H.O', ADMIN: 'Admin' };
+function normRole(role) { return String(role || '').trim().toUpperCase(); }
+
+// ============================================================
+// AUTO-CAPITALIZE ALL TEXT TYPED IN THE APP
+// Any plain text input (name, address, group, aadhar, pan, ifsc, etc.)
+// is automatically converted to CAPITAL letters as the user types.
+// Number/date/password/tel inputs are left untouched.
+// ============================================================
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  const isPlainTextInput = el.tagName === 'INPUT' && (el.type === 'text' || el.type === '' || el.type === undefined);
+  const isTextarea = el.tagName === 'TEXTAREA';
+  if (!isPlainTextInput && !isTextarea) return;
+  const start = el.selectionStart, end = el.selectionEnd;
+  const upper = el.value.toUpperCase();
+  if (upper === el.value) return;
+  el.value = upper;
+  if (start !== null && end !== null) el.setSelectionRange(start, end);
+});
+
 // ============================================================
 // API HELPER
 // ============================================================
@@ -106,16 +131,26 @@ function boot() {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').classList.remove('hidden');
   document.getElementById('userName').textContent = SESSION.name;
-  document.getElementById('userMeta').textContent =
-    SESSION.role === 'branch' ? `Branch: ${SESSION.branch}` :
-    SESSION.role === 'area' ? `Area: ${SESSION.area}` : 'Admin';
 
-  const tabs = SESSION.role === 'branch'
-    ? [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
-       ['summary', 'Summary'], ['creategroup', 'Create Group'], ['transaction', 'Transaction']]
-    : SESSION.role === 'area'
-    ? [['areaOverview', 'Overview']]
-    : [['adminOverview', 'Overview'], ['staff', 'Staff'], ['logs', 'Logs']];
+  const role = normRole(SESSION.role);
+  const roleLabel = ROLE_LABELS[role] || SESSION.role;
+  document.getElementById('userMeta').textContent =
+    BRANCH_ROLES.includes(role) ? `${roleLabel} · Branch: ${SESSION.branch}` :
+    role === AREA_ROLE ? `${roleLabel} · Area: ${SESSION.area}` :
+    roleLabel;
+
+  let tabs;
+  if (BRANCH_ROLES.includes(role)) {
+    tabs = [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
+       ['summary', 'Summary'], ['creategroup', 'Create Group'], ['transaction', 'Transaction'], ['report', 'Report']];
+  } else if (role === AREA_ROLE) {
+    tabs = [['areaOverview', 'Overview'], ['report', 'Report']];
+  } else if (role === 'ADMIN') {
+    tabs = [['adminOverview', 'Overview'], ['staff', 'Staff'], ['logs', 'Logs'], ['report', 'Report']];
+  } else {
+    // AUDIT / H.O - read-only across all branches
+    tabs = [['adminOverview', 'Overview'], ['report', 'Report']];
+  }
 
   const nav = document.getElementById('tabNav');
   nav.innerHTML = '';
@@ -144,6 +179,7 @@ function render() {
   else if (activeTab === 'adminOverview') renderAdminOverview();
   else if (activeTab === 'staff') renderStaff();
   else if (activeTab === 'logs') renderLogs();
+  else if (activeTab === 'report') renderReport();
 }
 
 // ============================================================
@@ -614,9 +650,13 @@ async function renderStaff() {
       <div class="field"><label>Phone (Login ID)</label><input id="s_phone" required /></div>
       <div class="field"><label>Role</label>
         <select id="s_role">
-          <option value="branch">Branch Staff</option>
-          <option value="area">Area Staff</option>
-          <option value="admin">Admin</option>
+          <option value="CO">C.O</option>
+          <option value="SCO">S.C.O</option>
+          <option value="BM">B.M</option>
+          <option value="AM">A.M (Area Head)</option>
+          <option value="AUDIT">Audit (All Branches)</option>
+          <option value="HO">H.O (All Branches)</option>
+          <option value="ADMIN">Admin (All in All)</option>
         </select>
       </div>
       <div class="field" id="s_branchField"><label>Branch</label><input id="s_branch" /></div>
@@ -627,6 +667,14 @@ async function renderStaff() {
     </form>
   </div>
   <div class="card"><h3>All Staff</h3><div id="staffListWrap"><p class="muted">Loading...</p></div></div>`;
+
+  function updateStaffFieldVisibility() {
+    const role = val('s_role');
+    document.getElementById('s_branchField').style.display = BRANCH_ROLES.includes(role) ? 'block' : 'none';
+    document.getElementById('s_areaField').style.display = role === AREA_ROLE ? 'block' : 'none';
+  }
+  document.getElementById('s_role').addEventListener('change', updateStaffFieldVisibility);
+  updateStaffFieldVisibility();
 
   document.getElementById('staffForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -639,6 +687,7 @@ async function renderStaff() {
       });
       toast('Staff added successfully');
       e.target.reset();
+      updateStaffFieldVisibility();
       loadStaffList();
     } catch (err) {
       errEl.textContent = err.message;
@@ -654,7 +703,7 @@ async function loadStaffList() {
     const { staff } = await api('getStaffList');
     wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Branch/Area</th><th></th></tr></thead><tbody>
       ${staff.map(s => `<tr>
-        <td>${escapeHtml(s.name)}</td><td>${escapeHtml(String(s.phone))}</td><td>${escapeHtml(s.role)}</td>
+        <td>${escapeHtml(s.name)}</td><td>${escapeHtml(String(s.phone))}</td><td>${escapeHtml(ROLE_LABELS[normRole(s.role)] || s.role)}</td>
         <td>${escapeHtml(s.branch || s.area || '-')}</td>
         <td><button class="btn-ghost resetBtn" data-p="${escapeHtml(String(s.phone))}" style="color:#0E2A3D;border-color:#E4E9ED;">Reset PW</button></td>
       </tr>`).join('')}
@@ -670,6 +719,75 @@ async function loadStaffList() {
   } catch (err) {
     wrap.innerHTML = `<p class="error">${err.message}</p>`;
   }
+}
+
+// ============================================================
+// REPORT (all roles - scoped automatically to what they're allowed to see)
+// ============================================================
+async function renderReport() {
+  const main = document.getElementById('mainContent');
+  const role = normRole(SESSION.role);
+  const isBranchOnly = BRANCH_ROLES.includes(role);
+
+  main.innerHTML = `
+  <div class="card">
+    <h3>Report</h3>
+    <div class="field-row">
+      <div class="field"><label>From Date</label><input type="date" id="r_from" /></div>
+      <div class="field"><label>To Date</label><input type="date" id="r_to" /></div>
+    </div>
+    ${isBranchOnly ? '' : `<div class="field"><label>Branch</label>
+      <select id="r_branch"><option value="ALL">All Branches</option></select>
+    </div>`}
+    <button class="btn-primary" type="button" id="r_go">Generate Report</button>
+    <p id="r_error" class="error hidden"></p>
+  </div>
+  <div id="r_results"></div>`;
+
+  if (!isBranchOnly) {
+    try {
+      const { branches } = await api('getAllowedBranches');
+      const sel = document.getElementById('r_branch');
+      branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        sel.appendChild(opt);
+      });
+    } catch (err) { /* branch dropdown is optional; ignore failure here */ }
+  }
+
+  document.getElementById('r_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('r_error');
+    errEl.classList.add('hidden');
+    const results = document.getElementById('r_results');
+    results.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      const payload = { dateFrom: val('r_from'), dateTo: val('r_to') };
+      if (!isBranchOnly) payload.branch = val('r_branch');
+      const r = await api('getReport', payload);
+      results.innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">Total Collection</div><div class="value green">${money(r.totalCollection)}</div></div>
+        <div class="stat-card"><div class="label">Collection Count</div><div class="value">${r.collectionCount}</div></div>
+        <div class="stat-card"><div class="label">Total Disbursement</div><div class="value">${money(r.totalDisbursement)}</div></div>
+        <div class="stat-card"><div class="label">Disbursement Count</div><div class="value">${r.disbursementCount}</div></div>
+      </div>
+      <div class="card"><h3>Collections</h3>
+        ${r.collections.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
+          ${r.collections.map(c => `<tr><td>${fmtDate(c.Timestamp)}</td><td>${escapeHtml(c.Branch)}</td><td>${escapeHtml(c.CustomerName)}</td><td>${money(c.PutAmt)}</td><td>${escapeHtml(c.StaffName)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty-state">No collections in this range</div>'}
+      </div>
+      <div class="card"><h3>Disbursements</h3>
+        ${r.disbursements.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th></tr></thead><tbody>
+          ${r.disbursements.map(d => `<tr><td>${fmtDate(d.Timestamp)}</td><td>${escapeHtml(d.Branch)}</td><td>${escapeHtml(d.CustomerName)}</td><td>${money(d.LoanAmt)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty-state">No disbursements in this range</div>'}
+      </div>`;
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      results.innerHTML = '';
+    }
+  });
 }
 
 // ============================================================
