@@ -68,6 +68,15 @@ function money(n) {
   n = Number(n) || 0;
   return '₹' + n.toLocaleString('en-IN');
 }
+// Used in daily-sheet tables: an actual zero/empty amount shows blank, not "₹0" / "0".
+function moneyOrBlank(n) {
+  n = Number(n) || 0;
+  return n === 0 ? '' : money(n);
+}
+function numOrBlank(n) {
+  n = Number(n) || 0;
+  return n === 0 ? '' : String(n);
+}
 
 // ============================================================
 // LOGIN
@@ -307,7 +316,7 @@ async function renderDailySheet() {
       ['loanNo', 'Loan No', false],
       ['loanAmt', 'Loan Amt', true]
     ];
-    const fmt = (key, val) => key === 'groupName' ? escapeHtml(val) : (key.toLowerCase().includes('no') ? val : money(val));
+    const fmt = (key, val) => key === 'groupName' ? escapeHtml(val) : (key.toLowerCase().includes('no') ? numOrBlank(val) : moneyOrBlank(val));
 
     main.innerHTML = `
     <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -321,15 +330,15 @@ async function renderDailySheet() {
           ${s.rows.map(r => `<tr>${cols.map(([key]) => `<td>${fmt(key, r[key])}</td>`).join('')}</tr>`).join('')}
           <tr style="font-weight:800; border-top:2px solid var(--navy);">
             <td>Total</td>
-            <td>${money(s.total.realizable)}</td>
-            <td>${money(s.total.realised)}</td>
-            <td>${money(s.total.advance)}</td>
-            <td>${money(s.total.overdue)}</td>
-            <td>${money(s.total.loanCloser)}</td>
-            <td>${money(s.total.netCollection)}</td>
-            <td>${s.total.fulpaidNo}</td>
-            <td>${s.total.loanNo}</td>
-            <td>${money(s.total.loanAmt)}</td>
+            <td>${moneyOrBlank(s.total.realizable)}</td>
+            <td>${moneyOrBlank(s.total.realised)}</td>
+            <td>${moneyOrBlank(s.total.advance)}</td>
+            <td>${moneyOrBlank(s.total.overdue)}</td>
+            <td>${moneyOrBlank(s.total.loanCloser)}</td>
+            <td>${moneyOrBlank(s.total.netCollection)}</td>
+            <td>${numOrBlank(s.total.fulpaidNo)}</td>
+            <td>${numOrBlank(s.total.loanNo)}</td>
+            <td>${moneyOrBlank(s.total.loanAmt)}</td>
           </tr>
         </tbody>
       </table></div>` : '<div class="empty-state">No group activity for today yet</div>'}
@@ -460,7 +469,14 @@ function statCardsHtml(s) {
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Death No</div><div class="value">${s.deathNo}</div></div>
       <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(s.deathOutstanding)}</div></div>
-    </div>`;
+    </div>
+    ${s.closeCash !== undefined ? `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Open Cash</div><div class="value">${money(s.openCash)}</div></div>
+      <div class="stat-card"><div class="label">Close Cash</div><div class="value green">${money(s.closeCash)}</div></div>
+      <div class="stat-card"><div class="label">Ledger Customers</div><div class="value">${s.ledgerCustomers}</div></div>
+      <div class="stat-card"><div class="label">Ledger Outstanding</div><div class="value">${money(s.ledgerOutstanding)}</div></div>
+    </div>` : ''}`;
 }
 
 async function renderBranchSummary() {
@@ -527,6 +543,10 @@ async function renderTransaction() {
         <div class="field"><label>PNB UPI</label><input type="number" min="0" id="tx_pnbupi" value="0" /></div>
         <div class="field"><label>HDFC UPI</label><input type="number" min="0" id="tx_hdfcupi" value="0" /></div>
       </div>
+      <div class="field-row">
+        <div class="field"><label>Misc Income</label><input type="number" min="0" id="tx_miscinc" value="0" /></div>
+        <div class="field"><label>Misc Expense</label><input type="number" min="0" id="tx_miscexp" value="0" /></div>
+      </div>
       <button class="btn-primary" type="submit">Submit</button>
       <p id="txError" class="error hidden"></p>
     </form>
@@ -539,7 +559,8 @@ async function renderTransaction() {
     try {
       await api('submitTransaction', {
         pnbDeposit: val('tx_pnbdep'), hdfcDeposit: val('tx_hdfcdep'),
-        pnbUpi: val('tx_pnbupi'), hdfcUpi: val('tx_hdfcupi')
+        pnbUpi: val('tx_pnbupi'), hdfcUpi: val('tx_hdfcupi'),
+        miscInc: val('tx_miscinc'), miscExp: val('tx_miscexp')
       });
       toast('Transaction submitted');
       e.target.reset();
@@ -547,6 +568,8 @@ async function renderTransaction() {
       document.getElementById('tx_hdfcdep').value = 0;
       document.getElementById('tx_pnbupi').value = 0;
       document.getElementById('tx_hdfcupi').value = 0;
+      document.getElementById('tx_miscinc').value = 0;
+      document.getElementById('tx_miscexp').value = 0;
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
@@ -565,6 +588,7 @@ async function renderAreaOverview() {
       const b = s.branches.find(x => x.branch === areaDrilldownBranch);
       main.innerHTML = branchDetailHtml(b, true);
       document.getElementById('backBtn').onclick = () => { areaDrilldownBranch = null; renderAreaOverview(); };
+      wireOpenCashCard();
       return;
     }
     main.innerHTML = `
@@ -587,10 +611,22 @@ async function renderAreaOverview() {
 
 function branchDetailHtml(b, showBack) {
   if (!b) return '<p class="muted">No data found</p>';
+  const isAdmin = normRole(SESSION.role) === 'ADMIN';
   return `
   ${showBack ? `<button id="backBtn" class="back-link">&larr; Back to branch list</button>` : ''}
   <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(b.branch)}</h3></div>
   ${statCardsHtml(b)}
+  ${isAdmin ? `
+  <div class="card">
+    <h3>Set Open Cash</h3>
+    <p class="muted" style="margin-bottom:12px;">Sets the starting cash for this branch on a given date. After that, Open/Close Cash carries forward automatically day to day - only override this if the chain needs correcting.</p>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="oc_date" value="${new Date().toISOString().slice(0, 10)}" /></div>
+      <div class="field"><label>Open Cash</label><input type="number" id="oc_amt" value="0" /></div>
+    </div>
+    <button class="btn-primary" type="button" id="oc_save" data-branch="${escapeHtml(b.branch)}">Save Open Cash</button>
+    <p id="ocError" class="error hidden"></p>
+  </div>` : ''}
   <div class="card"><h3>Recent Collections</h3>
     ${b.recentCollections.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
       ${b.recentCollections.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
@@ -601,6 +637,22 @@ function branchDetailHtml(b, showBack) {
       ${b.recentDisbursements.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.LoanAmt)}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="empty-state">No disbursements yet</div>'}
   </div>`;
+}
+
+function wireOpenCashCard() {
+  const btn = document.getElementById('oc_save');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const errEl = document.getElementById('ocError');
+    errEl.classList.add('hidden');
+    try {
+      await api('saveOpenCash', { branch: btn.dataset.branch, date: val('oc_date'), openCash: val('oc_amt') });
+      toast('Open Cash saved');
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+    }
+  });
 }
 
 // ============================================================
@@ -748,47 +800,33 @@ async function loadAMDailySummary() {
       ['loanAmt', 'Loan Amt'], ['transaction', 'Transaction'], ['miscExp', 'Misc Exp'], ['totalExpense', 'Total Expense'],
       ['closeCash', 'Close Cash']
     ];
-    const editableKeys = ['openCash', 'miscInc', 'miscExp'];
     const countKeys = ['fulpaidNo', 'loanNo'];
 
     const branchRowHtml = (r) => cols.map(([key]) => {
       if (key === 'branch') return `<td><a href="#" class="am-branch-link" data-b="${escapeHtml(r.branch)}" style="color:var(--navy); font-weight:700;">${escapeHtml(r.branch)}</a></td>`;
-      if (editableKeys.includes(key)) return `<td><input type="number" class="am-cash-input" data-field="${key}" value="${Number(r[key]) || 0}" style="width:80px; padding:6px 8px; border:1.5px solid var(--line); border-radius:6px;" /></td>`;
-      if (countKeys.includes(key)) return `<td>${r[key]}</td>`;
-      return `<td>${money(r[key])}</td>`;
+      if (countKeys.includes(key)) return `<td>${numOrBlank(r[key])}</td>`;
+      return `<td>${moneyOrBlank(r[key])}</td>`;
     }).join('');
 
     const totalRowHtml = cols.map(([key]) => {
       if (key === 'branch') return `<td>Total</td>`;
-      if (countKeys.includes(key)) return `<td>${s.total[key] || 0}</td>`;
-      return `<td>${money(s.total[key] || 0)}</td>`;
+      if (countKeys.includes(key)) return `<td>${numOrBlank(s.total[key])}</td>`;
+      return `<td>${moneyOrBlank(s.total[key])}</td>`;
     }).join('');
 
     wrap.innerHTML = `<div class="card">
+      <p class="muted" style="margin-bottom:12px;">Open Cash carries forward automatically from the previous day's Close Cash. Misc Inc/Exp come from Transaction entries. Only Admin can set/correct an Open Cash starting point.</p>
       ${s.branches.length ? `<div class="table-wrap"><table>
-        <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}<th></th></tr></thead>
+        <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
         <tbody>
-          ${s.branches.map(r => `<tr data-branch="${escapeHtml(r.branch)}">${branchRowHtml(r)}<td><button class="btn-ghost am-cash-save">Save</button></td></tr>`).join('')}
-          <tr style="font-weight:800; border-top:2px solid var(--navy);">${totalRowHtml}<td></td></tr>
+          ${s.branches.map(r => `<tr>${branchRowHtml(r)}</tr>`).join('')}
+          <tr style="font-weight:800; border-top:2px solid var(--navy);">${totalRowHtml}</tr>
         </tbody>
       </table></div>` : '<div class="empty-state">No branches found</div>'}
     </div>`;
 
     wrap.querySelectorAll('.am-branch-link').forEach(a => {
       a.addEventListener('click', (e) => { e.preventDefault(); openAMBranchDailyPopup(a.dataset.b); });
-    });
-    wrap.querySelectorAll('tr[data-branch]').forEach(tr => {
-      tr.querySelector('.am-cash-save').addEventListener('click', async () => {
-        const branch = tr.dataset.branch;
-        const openCash = tr.querySelector('[data-field="openCash"]').value;
-        const miscInc = tr.querySelector('[data-field="miscInc"]').value;
-        const miscExp = tr.querySelector('[data-field="miscExp"]').value;
-        try {
-          await api('saveCashBookEntry', { branch, date: amDailyDate, openCash, miscInc, miscExp });
-          toast('Cash book updated');
-          loadAMDailySummary();
-        } catch (err) { toast(err.message, true); }
-      });
     });
   } catch (err) {
     wrap.innerHTML = `<p class="error">${err.message}</p>`;
@@ -805,15 +843,15 @@ async function openAMBranchDailyPopup(branch) {
       ['netCollection', 'Net Collection', true], ['fulpaidNo', 'Fulpaid No', false],
       ['loanNo', 'Loan No', false], ['loanAmt', 'Loan Amt', true]
     ];
-    const fmt = (key, v) => key === 'groupName' ? escapeHtml(v) : (key.toLowerCase().includes('no') ? v : money(v));
+    const fmt = (key, v) => key === 'groupName' ? escapeHtml(v) : (key.toLowerCase().includes('no') ? numOrBlank(v) : moneyOrBlank(v));
     const body = s.rows.length ? `<div class="table-wrap"><table>
         <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
         <tbody>
           ${s.rows.map(r => `<tr>${cols.map(([key]) => `<td>${fmt(key, r[key])}</td>`).join('')}</tr>`).join('')}
           <tr style="font-weight:800; border-top:2px solid var(--navy);">
-            <td>Total</td><td>${money(s.total.realizable)}</td><td>${money(s.total.realised)}</td>
-            <td>${money(s.total.advance)}</td><td>${money(s.total.overdue)}</td><td>${money(s.total.loanCloser)}</td>
-            <td>${money(s.total.netCollection)}</td><td>${s.total.fulpaidNo}</td><td>${s.total.loanNo}</td><td>${money(s.total.loanAmt)}</td>
+            <td>Total</td><td>${moneyOrBlank(s.total.realizable)}</td><td>${moneyOrBlank(s.total.realised)}</td>
+            <td>${moneyOrBlank(s.total.advance)}</td><td>${moneyOrBlank(s.total.overdue)}</td><td>${moneyOrBlank(s.total.loanCloser)}</td>
+            <td>${moneyOrBlank(s.total.netCollection)}</td><td>${numOrBlank(s.total.fulpaidNo)}</td><td>${numOrBlank(s.total.loanNo)}</td><td>${moneyOrBlank(s.total.loanAmt)}</td>
           </tr>
         </tbody>
       </table></div>` : '<div class="empty-state">No group activity for this date</div>';
@@ -977,6 +1015,8 @@ async function loadAMTransactions() {
           <input type="number" class="tx_hdfcdep" value="${Number(t.hdfcDeposit) || 0}" style="width:90px; padding:8px; border:1.5px solid var(--line); border-radius:7px;" title="HDFC Deposit" />
           <input type="number" class="tx_pnbupi" value="${Number(t.pnbUpi) || 0}" style="width:90px; padding:8px; border:1.5px solid var(--line); border-radius:7px;" title="PNB UPI" />
           <input type="number" class="tx_hdfcupi" value="${Number(t.hdfcUpi) || 0}" style="width:90px; padding:8px; border:1.5px solid var(--line); border-radius:7px;" title="HDFC UPI" />
+          <input type="number" class="tx_miscinc" value="${Number(t.miscInc) || 0}" style="width:90px; padding:8px; border:1.5px solid var(--line); border-radius:7px;" title="Misc Income" />
+          <input type="number" class="tx_miscexp" value="${Number(t.miscExp) || 0}" style="width:90px; padding:8px; border:1.5px solid var(--line); border-radius:7px;" title="Misc Expense" />
           <button class="btn-submit-row txSaveBtn">Save</button>
           <button class="btn-ghost txDeleteBtn" style="color:#D64545; border-color:var(--line);">Delete</button>
         </div>
@@ -989,7 +1029,8 @@ async function loadAMTransactions() {
           await api('updateTransaction', {
             row: rowNum,
             pnbDeposit: row.querySelector('.tx_pnbdep').value, hdfcDeposit: row.querySelector('.tx_hdfcdep').value,
-            pnbUpi: row.querySelector('.tx_pnbupi').value, hdfcUpi: row.querySelector('.tx_hdfcupi').value
+            pnbUpi: row.querySelector('.tx_pnbupi').value, hdfcUpi: row.querySelector('.tx_hdfcupi').value,
+            miscInc: row.querySelector('.tx_miscinc').value, miscExp: row.querySelector('.tx_miscexp').value
           });
           toast('Transaction updated');
         } catch (err) { toast(err.message, true); }
@@ -1023,6 +1064,7 @@ async function renderAdminOverview() {
       const b = area.branches.find(x => x.branch === areaDrilldownBranch);
       main.innerHTML = branchDetailHtml(b, true);
       document.getElementById('backBtn').onclick = () => { areaDrilldownBranch = null; renderAdminOverview(); };
+      wireOpenCashCard();
       return;
     }
     if (adminDrilldownArea) {
