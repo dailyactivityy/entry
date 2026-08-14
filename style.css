@@ -216,3 +216,29 @@ table td{padding:12px 16px; border-bottom:1px solid var(--line); white-space:now
   .field-row{grid-template-columns:1fr;}
   .cust-action input{width:90px;}
 }
+
+/* ---------- Desktop layout: sidebar always visible (real "website" feel) ---------- */
+@media (min-width:900px){
+  .btn-hamburger{display:none;}
+  .nav-overlay{display:none !important;}
+
+  .tab-nav{
+    transform:translateX(0);      /* always open on desktop */
+    box-shadow:1px 0 0 var(--line);
+  }
+
+  .topbar{
+    margin-left:260px;
+    padding:12px 32px;
+  }
+  .topbar-brand{display:none;}   /* brand already shown in sidebar, avoid duplication */
+
+  .main-content{
+    margin-left:260px;
+    width:auto;
+    max-width:1200px;
+    padding:32px 40px;
+  }
+
+  .login-wrap{padding:40px;}
+}
