@@ -170,16 +170,18 @@ function boot() {
 
   let tabs;
   if (BRANCH_ROLES.includes(role)) {
-    tabs = [['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
-       ['summary', 'Summary'], ['creategroup', 'Create Group'], ['transaction', 'Transaction'],
+    tabs = [['summary', 'Summary'], ['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
+       ['attendance', 'Attendance'], ['expense', 'Expense'], ['creategroup', 'Create Group'], ['transaction', 'Transaction'],
        ['history', 'History'], ['report', 'Report']];
   } else if (role === AREA_ROLE) {
     tabs = [['areaOverview', 'Overview'], ['amCollection', 'Collection'], ['amDailysheet', 'Dailysheet'],
        ['amDisburse', 'Loan Disbursed'], ['amTransaction', 'Transaction'], ['report', 'Report']];
   } else if (role === 'ADMIN') {
     tabs = [['adminOverview', 'Overview'], ['staff', 'Staff'], ['logs', 'Logs'], ['report', 'Report']];
+  } else if (role === 'HO') {
+    tabs = [['hoOverview', 'Overview'], ['hoReport', 'Report']];
   } else {
-    // AUDIT / H.O - read-only across all branches
+    // AUDIT - read-only across all branches
     tabs = [['adminOverview', 'Overview'], ['report', 'Report']];
   }
 
@@ -204,6 +206,8 @@ function render() {
   else if (activeTab === 'dailysheet') renderDailySheet();
   else if (activeTab === 'disburse') renderDisburse();
   else if (activeTab === 'summary') renderBranchSummary();
+  else if (activeTab === 'attendance') renderAttendance();
+  else if (activeTab === 'expense') renderExpense();
   else if (activeTab === 'creategroup') renderCreateGroup();
   else if (activeTab === 'transaction') renderTransaction();
   else if (activeTab === 'history') renderHistory();
@@ -213,6 +217,8 @@ function render() {
   else if (activeTab === 'amDisburse') renderAMDisburse();
   else if (activeTab === 'amTransaction') renderAMTransaction();
   else if (activeTab === 'adminOverview') renderAdminOverview();
+  else if (activeTab === 'hoOverview') renderHOOverview();
+  else if (activeTab === 'hoReport') renderHOReport();
   else if (activeTab === 'staff') renderStaff();
   else if (activeTab === 'logs') renderLogs();
   else if (activeTab === 'report') renderReport();
@@ -494,6 +500,118 @@ async function renderBranchSummary() {
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
+}
+
+// ============================================================
+// BRANCH: ATTENDANCE
+// ============================================================
+async function renderAttendance() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+  <div class="card">
+    <h3>Attendance</h3>
+    <div class="field"><label>Date</label><input type="date" id="att_date" /></div>
+  </div>
+  <div id="att_list"><p class="muted">Loading...</p></div>`;
+
+  const dateInput = document.getElementById('att_date');
+  dateInput.value = new Date().toISOString().slice(0, 10);
+
+  async function loadAttendance() {
+    const listEl = document.getElementById('att_list');
+    listEl.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      const { staff, dateStr } = await api('getAttendance', { date: dateInput.value });
+      if (!staff.length) { listEl.innerHTML = '<div class="empty-state">No staff found for this branch</div>'; return; }
+      listEl.innerHTML = `<div class="card"><div class="table-wrap"><table><thead><tr><th>Staff</th><th>Role</th><th>Status</th></tr></thead><tbody>
+        ${staff.map(s => `<tr>
+          <td>${escapeHtml(s.name)}</td>
+          <td>${escapeHtml(s.role)}</td>
+          <td>
+            <button class="btn-ghost attBtn ${s.status === 'Present' ? 'active-present' : ''}" data-phone="${s.phone}" data-name="${escapeHtml(s.name)}" data-status="Present" style="${s.status === 'Present' ? 'background:#1F4A3D;color:#fff;' : ''}">Present</button>
+            <button class="btn-ghost attBtn ${s.status === 'Absent' ? 'active-absent' : ''}" data-phone="${s.phone}" data-name="${escapeHtml(s.name)}" data-status="Absent" style="${s.status === 'Absent' ? 'background:#B3261E;color:#fff;' : ''}">Absent</button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table></div></div>`;
+
+      document.querySelectorAll('.attBtn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await api('markAttendance', {
+              date: dateInput.value, staffPhone: btn.dataset.phone, staffName: btn.dataset.name, status: btn.dataset.status
+            });
+            toast(`Marked ${btn.dataset.name} as ${btn.dataset.status}`);
+            loadAttendance();
+          } catch (err) {
+            toast(err.message, true);
+            btn.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      listEl.innerHTML = `<p class="error">${err.message}</p>`;
+    }
+  }
+
+  dateInput.addEventListener('change', loadAttendance);
+  loadAttendance();
+}
+
+// ============================================================
+// BRANCH: EXPENSE
+// ============================================================
+async function renderExpense() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+  <div class="card">
+    <h3>Add Expense</h3>
+    <form id="expenseForm">
+      <div class="field"><label>Category</label>
+        <select id="exp_category">
+          <option>Staff Expense</option>
+          <option>Office Rent</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Amount</label><input type="number" id="exp_amount" min="0" step="0.01" required /></div>
+      <div class="field"><label>Note (optional)</label><input id="exp_note" /></div>
+      <button class="btn-primary" type="submit">Add Expense</button>
+      <p id="expError" class="error hidden"></p>
+    </form>
+  </div>
+  <div id="exp_list"><p class="muted">Loading...</p></div>`;
+
+  async function loadExpenses() {
+    const listEl = document.getElementById('exp_list');
+    try {
+      const { expenses } = await api('getExpenses');
+      listEl.innerHTML = `<div class="card"><h3>Recent Expenses</h3>
+        ${expenses.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Category</th><th>Amount</th><th>By</th><th>Note</th></tr></thead><tbody>
+          ${expenses.map(e => `<tr><td>${fmtDate(e.Timestamp)}</td><td>${escapeHtml(e.Category)}</td><td>${money(e.Amount)}</td><td>${escapeHtml(e.StaffName)}</td><td>${escapeHtml(e.Note || '')}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty-state">No expenses logged yet</div>'}
+      </div>`;
+    } catch (err) {
+      listEl.innerHTML = `<p class="error">${err.message}</p>`;
+    }
+  }
+
+  document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('expError');
+    errEl.classList.add('hidden');
+    try {
+      await api('addExpense', { category: val('exp_category'), amount: val('exp_amount'), note: val('exp_note') });
+      toast('Expense added');
+      e.target.reset();
+      loadExpenses();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  loadExpenses();
 }
 
 // ============================================================
@@ -1269,6 +1387,115 @@ async function loadStaffList() {
   } catch (err) {
     wrap.innerHTML = `<p class="error">${err.message}</p>`;
   }
+}
+
+// ============================================================
+// H.O: OVERVIEW
+// ============================================================
+async function renderHOOverview() {
+  const main = document.getElementById('mainContent');
+  try {
+    const s = await api('getHOOverview');
+    main.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Total Customer</div><div class="value">${s.totalCustomers}</div></div>
+      <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Death No</div><div class="value">${s.deathNo}</div></div>
+      <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(s.deathOutstanding)}</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Open Cash</div><div class="value">${money(s.openCash)}</div></div>
+      <div class="stat-card"><div class="label">Close Cash</div><div class="value green">${money(s.closeCash)}</div></div>
+    </div>
+    <p class="muted">Across ${s.branchCount} branch${s.branchCount === 1 ? '' : 'es'}.</p>`;
+  } catch (err) {
+    main.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+// ============================================================
+// H.O: REPORT (Attendance, Loan Disb, Collection, Transaction,
+// Close Cash, Staff Expense, Salary, Office Rent)
+// ============================================================
+async function renderHOReport() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+  <div class="card">
+    <h3>Report</h3>
+    <div class="field-row">
+      <div class="field"><label>From Date</label><input type="date" id="ho_from" /></div>
+      <div class="field"><label>To Date</label><input type="date" id="ho_to" /></div>
+    </div>
+    <div class="field"><label>Branch</label><select id="ho_branch"><option value="ALL">All Branches</option></select></div>
+    <button class="btn-primary" type="button" id="ho_go">Generate Report</button>
+    <p id="ho_error" class="error hidden"></p>
+  </div>
+  <div id="ho_results"></div>`;
+
+  try {
+    const { branches } = await api('getAllowedBranches');
+    const sel = document.getElementById('ho_branch');
+    branches.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      sel.appendChild(opt);
+    });
+  } catch (err) { /* branch dropdown is optional; ignore failure here */ }
+
+  document.getElementById('ho_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('ho_error');
+    errEl.classList.add('hidden');
+    const results = document.getElementById('ho_results');
+    results.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      const r = await api('getHOReport', { dateFrom: val('ho_from'), dateTo: val('ho_to'), branch: val('ho_branch') });
+      const section = (title, total, count, rows, rowFn, emptyMsg) => `
+        <div class="card"><h3>${title}</h3>
+          <div class="stat-grid">
+            <div class="stat-card"><div class="label">Total</div><div class="value green">${money(total)}</div></div>
+            ${count !== undefined ? `<div class="stat-card"><div class="label">Count</div><div class="value">${count}</div></div>` : ''}
+          </div>
+          ${rows && rows.length ? `<div class="table-wrap"><table><tbody>${rows.map(rowFn).join('')}</tbody></table></div>` : `<div class="empty-state">${emptyMsg}</div>`}
+        </div>`;
+
+      const attendanceSection = `
+        <div class="card"><h3>Attendance</h3>
+          <div class="stat-grid">
+            <div class="stat-card"><div class="label">Present</div><div class="value green">${r.attendance.present}</div></div>
+            <div class="stat-card"><div class="label">Absent</div><div class="value" style="color:#B3261E;">${r.attendance.absent}</div></div>
+          </div>
+          ${r.attendance.records.length ? `<div class="table-wrap"><table><tbody>${r.attendance.records.map(a => `<tr><td>${fmtDate(a.Date)}</td><td>${escapeHtml(a.Branch)}</td><td>${escapeHtml(a.StaffName)}</td><td>${escapeHtml(a.Status)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state">No attendance records in this range</div>'}
+        </div>`;
+
+      results.innerHTML =
+        attendanceSection +
+        section('Loan Disb', r.loanDisb.total, r.loanDisb.count, r.loanDisb.records,
+          d => `<tr><td>${fmtDate(d.Timestamp)}</td><td>${escapeHtml(d.Branch)}</td><td>${escapeHtml(d.CustomerName)}</td><td>${money(d.LoanAmt)}</td></tr>`,
+          'No disbursements in this range') +
+        section('Collection', r.collection.total, r.collection.count, r.collection.records,
+          c => `<tr><td>${fmtDate(c.Timestamp)}</td><td>${escapeHtml(c.Branch)}</td><td>${escapeHtml(c.CustomerName)}</td><td>${money(c.PutAmt)}</td></tr>`,
+          'No collections in this range') +
+        section('Transaction', r.transaction.total, r.transaction.count, r.transaction.records,
+          t => `<tr><td>${fmtDate(t.Timestamp)}</td><td>${escapeHtml(t.Branch)}</td><td>${money(t.Total)}</td></tr>`,
+          'No transactions in this range') +
+        `<div class="card"><h3>Close Cash</h3><div class="stat-grid"><div class="stat-card"><div class="label">As of ${r.closeCash.asOf}</div><div class="value green">${money(r.closeCash.total)}</div></div></div></div>` +
+        section('Staff Expense', r.staffExpense.total, undefined, r.staffExpense.records,
+          e => `<tr><td>${fmtDate(e.Timestamp)}</td><td>${escapeHtml(e.Branch)}</td><td>${escapeHtml(e.StaffName)}</td><td>${money(e.Amount)}</td></tr>`,
+          'No staff expenses in this range') +
+        section('Salary', r.salary.total, undefined, r.salary.records,
+          s => `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.branch)}</td><td>${escapeHtml(s.role)}</td><td>${money(s.salary)}</td></tr>`,
+          'No staff found') +
+        section('Office Rent', r.officeRent.total, undefined, r.officeRent.records,
+          e => `<tr><td>${fmtDate(e.Timestamp)}</td><td>${escapeHtml(e.Branch)}</td><td>${money(e.Amount)}</td></tr>`,
+          'No office rent entries in this range');
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      results.innerHTML = '';
+    }
+  });
 }
 
 // ============================================================
