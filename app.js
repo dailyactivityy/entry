@@ -52,7 +52,11 @@ async function api(action, payload = {}) {
     body: JSON.stringify(body)
   });
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Something went wrong');
+  if (!data.ok) {
+    const err = new Error(data.error || 'Something went wrong');
+    Object.assign(err, data); // carries any extra fields from the response through to the catch block
+    throw err;
+  }
   return data;
 }
 
@@ -1209,7 +1213,6 @@ async function renderStaff() {
       <div class="field" id="s_branchField"><label>Branch</label><input id="s_branch" /></div>
       <div class="field" id="s_areaField"><label>Area</label><input id="s_area" /></div>
       <button class="btn-primary" type="submit">Add Staff</button>
-      <p class="muted">Default password: <b>Sampoorn</b> (staff must change it on first login)</p>
       <p id="staffError" class="error hidden"></p>
     </form>
   </div>
@@ -1232,7 +1235,7 @@ async function renderStaff() {
         name: val('s_name'), phone: val('s_phone'), role: val('s_role'),
         branch: val('s_branch'), area: val('s_area')
       });
-      toast('Staff added successfully');
+      toast('Staff added - default password is "Sampoorn"');
       e.target.reset();
       updateStaffFieldVisibility();
       loadStaffList();
@@ -1259,7 +1262,7 @@ async function loadStaffList() {
       b.addEventListener('click', async () => {
         try {
           await api('resetStaffPassword', { phone: b.dataset.p });
-          toast('Password reset to Sampoorn');
+          toast('Password reset to "Sampoorn"');
         } catch (err) { toast(err.message, true); }
       });
     });
