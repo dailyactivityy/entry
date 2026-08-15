@@ -59,6 +59,44 @@ function money(n) {
   return '₹' + n.toLocaleString('en-IN');
 }
 
+function downloadCSV(filename, headers, rows) {
+  const esc = (v) => {
+    const s = String(v ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [headers.map(esc).join(',')].concat(rows.map(r => r.map(esc).join(',')));
+  const csv = '\ufeff' + lines.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function printReportWindow(title, bodyHtml) {
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><title>${title}</title><style>
+    body{font-family:Arial, sans-serif; padding:24px; color:#1C2B22;}
+    h2{margin:0 0 14px;}
+    table{width:100%; border-collapse:collapse; font-size:12px; margin-bottom:16px;}
+    th,td{border:1px solid #999; padding:6px 8px; text-align:left;}
+    th{background:#1F4A3D; color:#fff;}
+    .totals{font-size:13px; margin-top:6px;}
+    .totals b{margin-right:18px;}
+  </style></head><body><h2>${title}</h2>${bodyHtml}</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 300);
+}
+
+function downloadBtnsHtml(idPrefix) {
+  return `<div style="display:flex; gap:8px; margin-bottom:12px;">
+    <button class="btn-ghost" type="button" id="${idPrefix}_xls">Download Excel</button>
+    <button class="btn-ghost" type="button" id="${idPrefix}_pdf">Download PDF</button>
+  </div>`;
+}
+
 function moneyOrBlank(n) {
   n = Number(n) || 0;
   return n === 0 ? '' : money(n);
@@ -1416,8 +1454,13 @@ async function renderLoanDisbReport() {
       const payload = { date: val('ld_date') };
       if (!isBranchOnly) payload.branch = val('ld_branch');
       const { rows, totalLoanNo, totalLoanAmt } = await api('getLoanDisbReport', payload);
+      const LD_HEADERS = ['Sl', 'Disb Date', 'Branch', 'Group', 'Customer Name', 'Ph No', 'Co Applicant Name',
+        'Loan Amt', 'Emi Amt', 'Outstanding', 'Aadhar Card No', 'Pan Card No', 'A/C No', 'IFSC Code'];
+      const ldRow = (r, i) => [i + 1, r.disbDate, r.branch, r.group, r.customerName, r.phNo, r.coApplicantName,
+        r.loanAmt, r.emiAmt, r.outstanding, r.aadharNo, r.panNo, r.acNo, r.ifscCode];
       results.innerHTML = `
       <div class="card"><h3>Disbursements</h3>
+        ${rows.length ? downloadBtnsHtml('ld') : ''}
         ${rows.length ? `<div class="table-wrap"><table><thead><tr>
           <th>Sl</th><th>Disb Date</th><th>Branch</th><th>Group</th><th>Customer Name</th><th>Ph No</th>
           <th>Co Applicant Name</th><th>Loan Amt</th><th>Emi Amt</th><th>Outstanding</th>
@@ -1436,6 +1479,23 @@ async function renderLoanDisbReport() {
         <div class="stat-card"><div class="label">Total Loan No</div><div class="value">${totalLoanNo}</div></div>
         <div class="stat-card"><div class="label">Total Loan Amt</div><div class="value green">${money(totalLoanAmt)}</div></div>
       </div>`;
+
+      if (rows.length) {
+        document.getElementById('ld_xls').addEventListener('click', () => {
+          const csvRows = rows.map(ldRow);
+          csvRows.push([]);
+          csvRows.push(['', '', '', '', '', '', '', '', '', '', '', '', 'Total Loan No', totalLoanNo]);
+          csvRows.push(['', '', '', '', '', '', '', '', '', '', '', '', 'Total Loan Amt', totalLoanAmt]);
+          downloadCSV(`Loan_Disb_${val('ld_date')}.csv`, LD_HEADERS, csvRows);
+        });
+        document.getElementById('ld_pdf').addEventListener('click', () => {
+          const tableHtml = `<table><thead><tr>${LD_HEADERS.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+            ${rows.map((r, i) => `<tr>${ldRow(r, i).map(v => `<td>${escapeHtml(String(v))}</td>`).join('')}</tr>`).join('')}
+          </tbody></table>
+          <div class="totals"><b>Total Loan No: ${totalLoanNo}</b><b>Total Loan Amt: ${money(totalLoanAmt)}</b></div>`;
+          printReportWindow(`Loan Disb Report - ${val('ld_date')}`, tableHtml);
+        });
+      }
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
@@ -1487,8 +1547,11 @@ async function renderCollectionReport() {
       const { mode, rows, total, branch } = await api('getCollectionReport', payload);
       const colLabel = mode === 'group' ? 'Group' : 'Branch';
       const rowLabel = (r) => mode === 'group' ? r.group : r.branch;
+      const CR_HEADERS = mode === 'group' ? ['Sl', 'Branch', 'Group', 'Realizable Amt', 'Net Collection'] : ['Sl', 'Branch', 'Realizable Amt', 'Net Collection'];
+      const crRow = (r, i) => mode === 'group' ? [i + 1, branch, r.group, r.realizableAmt, r.netCollection] : [i + 1, r.branch, r.realizableAmt, r.netCollection];
       results.innerHTML = `
       <div class="card"><h3>${mode === 'group' ? 'Collection - ' + escapeHtml(branch) : 'Collection - All Branches'}</h3>
+        ${rows.length ? downloadBtnsHtml('cr') : ''}
         ${rows.length ? `<div class="table-wrap"><table><thead><tr>
           <th>Sl</th>${mode === 'group' ? '<th>Branch</th>' : ''}<th>${colLabel}</th><th>Realizable Amt</th><th>Net Collection</th>
         </tr></thead><tbody>
@@ -1499,6 +1562,24 @@ async function renderCollectionReport() {
         <div class="stat-card"><div class="label">Total Realizable Amt</div><div class="value">${money(total.realizableAmt)}</div></div>
         <div class="stat-card"><div class="label">Total Net Collection</div><div class="value green">${money(total.netCollection)}</div></div>
       </div>`;
+
+      if (rows.length) {
+        document.getElementById('cr_xls').addEventListener('click', () => {
+          const csvRows = rows.map(crRow);
+          csvRows.push([]);
+          const blankCols = new Array(CR_HEADERS.length - 2).fill('');
+          csvRows.push([...blankCols, 'Total Realizable Amt', total.realizableAmt]);
+          csvRows.push([...blankCols, 'Total Net Collection', total.netCollection]);
+          downloadCSV(`Collection_${val('cr_date')}.csv`, CR_HEADERS, csvRows);
+        });
+        document.getElementById('cr_pdf').addEventListener('click', () => {
+          const tableHtml = `<table><thead><tr>${CR_HEADERS.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+            ${rows.map((r, i) => `<tr>${crRow(r, i).map(v => `<td>${escapeHtml(String(v))}</td>`).join('')}</tr>`).join('')}
+          </tbody></table>
+          <div class="totals"><b>Total Realizable Amt: ${money(total.realizableAmt)}</b><b>Total Net Collection: ${money(total.netCollection)}</b></div>`;
+          printReportWindow(`Collection Report - ${val('cr_date')}`, tableHtml);
+        });
+      }
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
@@ -1602,14 +1683,32 @@ async function renderSimpleNightReport() {
         const { dateStr, summary } = await api('getSimpleNightReport', { date: val('snr_date') });
         results.innerHTML = `
         <div class="card"><h3>Date: ${escapeHtml(dateStr)}</h3>
+          ${downloadBtnsHtml('snr')}
           <div class="table-wrap"><table><tbody>
             ${SIMPLE_NIGHT_FIELDS.map(([label, key, type]) => `<tr><td style="font-weight:500;">${escapeHtml(label)}</td><td>${type === 'money' ? money(summary[key]) : summary[key]}</td></tr>`).join('')}
           </tbody></table></div>
         </div>`;
+        document.getElementById('snr_xls').addEventListener('click', () => {
+          const csvRows = SIMPLE_NIGHT_FIELDS.map(([label, key]) => [label, summary[key]]);
+          downloadCSV(`Night_Report_${dateStr}.csv`, ['Field', 'Value'], csvRows);
+        });
+        document.getElementById('snr_pdf').addEventListener('click', () => {
+          const tableHtml = `<table><tbody>${SIMPLE_NIGHT_FIELDS.map(([label, key, type]) => `<tr><td><b>${escapeHtml(label)}</b></td><td>${type === 'money' ? money(summary[key]) : summary[key]}</td></tr>`).join('')}</tbody></table>`;
+          printReportWindow(`Night Report - ${dateStr}`, tableHtml);
+        });
       } else {
         const { dateStr, rows, total } = await api('getDetailedNightReport', { date: val('snr_date') });
         const columns = rows.map(r => ({ label: r.branch, data: r })).concat(rows.length > 1 ? [{ label: 'Total', data: total }] : []);
-        results.innerHTML = `<h3 style="margin:0 0 10px 2px;">Date: ${escapeHtml(dateStr)}</h3>` + detailedNightTableHtml(columns);
+        results.innerHTML = `<h3 style="margin:0 0 10px 2px;">Date: ${escapeHtml(dateStr)}</h3>` + downloadBtnsHtml('snr') + detailedNightTableHtml(columns);
+        document.getElementById('snr_xls').addEventListener('click', () => {
+          const headers = ['Field'].concat(columns.map(c => c.label));
+          const csvRows = DETAILED_NIGHT_FIELDS.map(([label, key, type]) => [label, ...columns.map(c => type === 'pct' ? (Number(c.data[key]) || 0).toFixed(2) + '%' : c.data[key])]);
+          downloadCSV(`Night_Report_${dateStr}.csv`, headers, csvRows);
+        });
+        document.getElementById('snr_pdf').addEventListener('click', () => {
+          const tableHtml = detailedNightTableHtml(columns);
+          printReportWindow(`Night Report - ${dateStr}`, tableHtml);
+        });
       }
     } catch (err) {
       errEl.textContent = err.message;
