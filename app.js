@@ -196,7 +196,7 @@ function render() {
   else if (activeTab === 'amTransaction') renderAMTransaction();
   else if (activeTab === 'adminOverview') renderAdminOverview();
   else if (activeTab === 'hoOverview') renderHOOverview();
-  else if (activeTab === 'hoReport') renderHOReport();
+  else if (activeTab === 'hoReport') renderReport();
   else if (activeTab === 'staff') renderStaff();
   else if (activeTab === 'logs') renderLogs();
   else if (activeTab === 'report') renderReport();
@@ -1352,77 +1352,90 @@ async function renderHOOverview() {
   }
 }
 
-async function renderHOReport() {
+function renderReport() {
   const main = document.getElementById('mainContent');
   main.innerHTML = `
   <div class="card">
     <h3>Report</h3>
-    <div class="field-row">
-      <div class="field"><label>From Date</label><input type="date" id="ho_from" /></div>
-      <div class="field"><label>To Date</label><input type="date" id="ho_to" /></div>
+    <div class="report-menu">
+      <button class="btn-ghost report-menu-btn" id="rm_loandisb">Loan Disb</button>
+      <button class="btn-ghost report-menu-btn" id="rm_collection">Collection</button>
+      <button class="btn-ghost report-menu-btn" id="rm_night">Night Report</button>
     </div>
-    <div class="field"><label>Branch</label><select id="ho_branch"><option value="ALL">All Branches</option></select></div>
-    <button class="btn-primary" type="button" id="ho_go">Generate Report</button>
-    <p id="ho_error" class="error hidden"></p>
+  </div>`;
+  document.getElementById('rm_loandisb').addEventListener('click', renderLoanDisbReport);
+  document.getElementById('rm_collection').addEventListener('click', renderCollectionReport);
+  document.getElementById('rm_night').addEventListener('click', renderSimpleNightReport);
+}
+
+function reportBackBtn() {
+  return `<button class="btn-ghost" type="button" id="rep_back" style="margin-bottom:14px;">&larr; Back to Report</button>`;
+}
+function wireReportBack() {
+  document.getElementById('rep_back').addEventListener('click', renderReport);
+}
+
+async function renderLoanDisbReport() {
+  const main = document.getElementById('mainContent');
+  const role = normRole(SESSION.role);
+  const isBranchOnly = BRANCH_ROLES.includes(role);
+
+  main.innerHTML = `
+  <div class="card">
+    ${reportBackBtn()}
+    <h3>Loan Disb Report</h3>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="ld_date" /></div>
+      ${isBranchOnly ? '' : `<div class="field"><label>Branch</label><select id="ld_branch"><option value="ALL">All Branches</option></select></div>`}
+    </div>
+    <button class="btn-primary" type="button" id="ld_go">Load</button>
+    <p id="ld_error" class="error hidden"></p>
   </div>
-  <div id="ho_results"></div>`;
+  <div id="ld_results"></div>`;
+  wireReportBack();
+  document.getElementById('ld_date').value = new Date().toISOString().slice(0, 10);
 
-  try {
-    const { branches } = await api('getAllowedBranches');
-    const sel = document.getElementById('ho_branch');
-    branches.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b; opt.textContent = b;
-      sel.appendChild(opt);
-    });
-  } catch (err) {  }
+  if (!isBranchOnly) {
+    try {
+      const { branches } = await api('getAllowedBranches');
+      const sel = document.getElementById('ld_branch');
+      branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        sel.appendChild(opt);
+      });
+    } catch (err) { }
+  }
 
-  document.getElementById('ho_go').addEventListener('click', async () => {
-    const errEl = document.getElementById('ho_error');
+  document.getElementById('ld_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('ld_error');
     errEl.classList.add('hidden');
-    const results = document.getElementById('ho_results');
+    const results = document.getElementById('ld_results');
     results.innerHTML = '<p class="muted">Loading...</p>';
     try {
-      const r = await api('getHOReport', { dateFrom: val('ho_from'), dateTo: val('ho_to'), branch: val('ho_branch') });
-      const section = (title, total, count, rows, rowFn, emptyMsg) => `
-        <div class="card"><h3>${title}</h3>
-          <div class="stat-grid">
-            <div class="stat-card"><div class="label">Total</div><div class="value green">${money(total)}</div></div>
-            ${count !== undefined ? `<div class="stat-card"><div class="label">Count</div><div class="value">${count}</div></div>` : ''}
-          </div>
-          ${rows && rows.length ? `<div class="table-wrap"><table><tbody>${rows.map(rowFn).join('')}</tbody></table></div>` : `<div class="empty-state">${emptyMsg}</div>`}
-        </div>`;
-
-      const attendanceSection = `
-        <div class="card"><h3>Attendance</h3>
-          <div class="stat-grid">
-            <div class="stat-card"><div class="label">Present</div><div class="value green">${r.attendance.present}</div></div>
-            <div class="stat-card"><div class="label">Absent</div><div class="value" style="color:#B3261E;">${r.attendance.absent}</div></div>
-          </div>
-          ${r.attendance.records.length ? `<div class="table-wrap"><table><tbody>${r.attendance.records.map(a => `<tr><td>${fmtDate(a.Date)}</td><td>${escapeHtml(a.Branch)}</td><td>${escapeHtml(a.StaffName)}</td><td>${escapeHtml(a.Status)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state">No attendance records in this range</div>'}
-        </div>`;
-
-      results.innerHTML =
-        attendanceSection +
-        section('Loan Disb', r.loanDisb.total, r.loanDisb.count, r.loanDisb.records,
-          d => `<tr><td>${fmtDate(d.Timestamp)}</td><td>${escapeHtml(d.Branch)}</td><td>${escapeHtml(d.CustomerName)}</td><td>${money(d.LoanAmt)}</td></tr>`,
-          'No disbursements in this range') +
-        section('Collection', r.collection.total, r.collection.count, r.collection.records,
-          c => `<tr><td>${fmtDate(c.Timestamp)}</td><td>${escapeHtml(c.Branch)}</td><td>${escapeHtml(c.CustomerName)}</td><td>${money(c.PutAmt)}</td></tr>`,
-          'No collections in this range') +
-        section('Transaction', r.transaction.total, r.transaction.count, r.transaction.records,
-          t => `<tr><td>${fmtDate(t.Timestamp)}</td><td>${escapeHtml(t.Branch)}</td><td>${money(t.Total)}</td></tr>`,
-          'No transactions in this range') +
-        `<div class="card"><h3>Close Cash</h3><div class="stat-grid"><div class="stat-card"><div class="label">As of ${r.closeCash.asOf}</div><div class="value green">${money(r.closeCash.total)}</div></div></div></div>` +
-        section('Staff Expense', r.staffExpense.total, undefined, r.staffExpense.records,
-          e => `<tr><td>${fmtDate(e.Timestamp)}</td><td>${escapeHtml(e.Branch)}</td><td>${escapeHtml(e.StaffName)}</td><td>${money(e.Amount)}</td></tr>`,
-          'No staff expenses in this range') +
-        section('Salary', r.salary.total, undefined, r.salary.records,
-          s => `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.branch)}</td><td>${escapeHtml(s.role)}</td><td>${money(s.salary)}</td></tr>`,
-          'No staff found') +
-        section('Office Rent', r.officeRent.total, undefined, r.officeRent.records,
-          e => `<tr><td>${fmtDate(e.Timestamp)}</td><td>${escapeHtml(e.Branch)}</td><td>${money(e.Amount)}</td></tr>`,
-          'No office rent entries in this range');
+      const payload = { date: val('ld_date') };
+      if (!isBranchOnly) payload.branch = val('ld_branch');
+      const { rows, totalLoanNo, totalLoanAmt } = await api('getLoanDisbReport', payload);
+      results.innerHTML = `
+      <div class="card"><h3>Disbursements</h3>
+        ${rows.length ? `<div class="table-wrap"><table><thead><tr>
+          <th>Sl</th><th>Disb Date</th><th>Branch</th><th>Group</th><th>Customer Name</th><th>Ph No</th>
+          <th>Co Applicant Name</th><th>Loan Amt</th><th>Emi Amt</th><th>Outstanding</th>
+          <th>Aadhar Card No</th><th>Pan Card No</th><th>A/C No</th><th>IFSC Code</th>
+        </tr></thead><tbody>
+          ${rows.map((r, i) => `<tr>
+            <td>${i + 1}</td><td>${escapeHtml(String(r.disbDate))}</td><td>${escapeHtml(r.branch)}</td>
+            <td>${escapeHtml(r.group)}</td><td>${escapeHtml(r.customerName)}</td><td>${escapeHtml(String(r.phNo))}</td>
+            <td>${escapeHtml(r.coApplicantName)}</td><td>${money(r.loanAmt)}</td><td>${escapeHtml(String(r.emiAmt))}</td>
+            <td>${money(r.outstanding)}</td><td>${escapeHtml(String(r.aadharNo))}</td><td>${escapeHtml(String(r.panNo))}</td>
+            <td>${escapeHtml(String(r.acNo))}</td><td>${escapeHtml(String(r.ifscCode))}</td>
+          </tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty-state">No disbursements on this date</div>'}
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">Total Loan No</div><div class="value">${totalLoanNo}</div></div>
+        <div class="stat-card"><div class="label">Total Loan Amt</div><div class="value green">${money(totalLoanAmt)}</div></div>
+      </div>`;
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
@@ -1431,67 +1444,173 @@ async function renderHOReport() {
   });
 }
 
-async function renderReport() {
+async function renderCollectionReport() {
   const main = document.getElementById('mainContent');
   const role = normRole(SESSION.role);
   const isBranchOnly = BRANCH_ROLES.includes(role);
 
   main.innerHTML = `
   <div class="card">
-    <h3>Report</h3>
-    <button class="btn-ghost" type="button" id="r_nightBtn" style="margin-bottom:14px;">Night Report</button>
+    ${reportBackBtn()}
+    <h3>Collection Report</h3>
     <div class="field-row">
-      <div class="field"><label>From Date</label><input type="date" id="r_from" /></div>
-      <div class="field"><label>To Date</label><input type="date" id="r_to" /></div>
+      <div class="field"><label>Date</label><input type="date" id="cr_date" /></div>
+      ${isBranchOnly ? '' : `<div class="field"><label>Branch</label><select id="cr_branch"><option value="ALL">All Branches</option></select></div>`}
     </div>
-    ${isBranchOnly ? '' : `<div class="field"><label>Branch</label>
-      <select id="r_branch"><option value="ALL">All Branches</option></select>
-    </div>`}
-    <button class="btn-primary" type="button" id="r_go">Generate Report</button>
-    <p id="r_error" class="error hidden"></p>
+    <button class="btn-primary" type="button" id="cr_go">Load</button>
+    <p id="cr_error" class="error hidden"></p>
   </div>
-  <div id="r_results"></div>`;
-
-  document.getElementById('r_nightBtn').addEventListener('click', renderNightReport);
+  <div id="cr_results"></div>`;
+  wireReportBack();
+  document.getElementById('cr_date').value = new Date().toISOString().slice(0, 10);
 
   if (!isBranchOnly) {
     try {
       const { branches } = await api('getAllowedBranches');
-      const sel = document.getElementById('r_branch');
+      const sel = document.getElementById('cr_branch');
       branches.forEach(b => {
         const opt = document.createElement('option');
         opt.value = b; opt.textContent = b;
         sel.appendChild(opt);
       });
-    } catch (err) {  }
+    } catch (err) { }
   }
 
-  document.getElementById('r_go').addEventListener('click', async () => {
-    const errEl = document.getElementById('r_error');
+  document.getElementById('cr_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('cr_error');
     errEl.classList.add('hidden');
-    const results = document.getElementById('r_results');
+    const results = document.getElementById('cr_results');
     results.innerHTML = '<p class="muted">Loading...</p>';
     try {
-      const payload = { dateFrom: val('r_from'), dateTo: val('r_to') };
-      if (!isBranchOnly) payload.branch = val('r_branch');
-      const r = await api('getReport', payload);
+      const payload = { date: val('cr_date') };
+      if (!isBranchOnly) payload.branch = val('cr_branch');
+      const { mode, rows, total, branch } = await api('getCollectionReport', payload);
+      const colLabel = mode === 'group' ? 'Group' : 'Branch';
+      const rowLabel = (r) => mode === 'group' ? r.group : r.branch;
       results.innerHTML = `
+      <div class="card"><h3>${mode === 'group' ? 'Collection - ' + escapeHtml(branch) : 'Collection - All Branches'}</h3>
+        ${rows.length ? `<div class="table-wrap"><table><thead><tr>
+          <th>Sl</th>${mode === 'group' ? '<th>Branch</th>' : ''}<th>${colLabel}</th><th>Realizable Amt</th><th>Net Collection</th>
+        </tr></thead><tbody>
+          ${rows.map((r, i) => `<tr><td>${i + 1}</td>${mode === 'group' ? `<td>${escapeHtml(branch)}</td>` : ''}<td>${escapeHtml(rowLabel(r))}</td><td>${money(r.realizableAmt)}</td><td>${money(r.netCollection)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty-state">No data for this date</div>'}
+      </div>
       <div class="stat-grid">
-        <div class="stat-card"><div class="label">Total Collection</div><div class="value green">${money(r.totalCollection)}</div></div>
-        <div class="stat-card"><div class="label">Collection Count</div><div class="value">${r.collectionCount}</div></div>
-        <div class="stat-card"><div class="label">Total Disbursement</div><div class="value">${money(r.totalDisbursement)}</div></div>
-        <div class="stat-card"><div class="label">Disbursement Count</div><div class="value">${r.disbursementCount}</div></div>
-      </div>
-      <div class="card"><h3>Collections</h3>
-        ${r.collections.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
-          ${r.collections.map(c => `<tr><td>${fmtDate(c.Timestamp)}</td><td>${escapeHtml(c.Branch)}</td><td>${escapeHtml(c.CustomerName)}</td><td>${money(c.PutAmt)}</td><td>${escapeHtml(c.StaffName)}</td></tr>`).join('')}
-        </tbody></table></div>` : '<div class="empty-state">No collections in this range</div>'}
-      </div>
-      <div class="card"><h3>Disbursements</h3>
-        ${r.disbursements.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th></tr></thead><tbody>
-          ${r.disbursements.map(d => `<tr><td>${fmtDate(d.Timestamp)}</td><td>${escapeHtml(d.Branch)}</td><td>${escapeHtml(d.CustomerName)}</td><td>${money(d.LoanAmt)}</td></tr>`).join('')}
-        </tbody></table></div>` : '<div class="empty-state">No disbursements in this range</div>'}
+        <div class="stat-card"><div class="label">Total Realizable Amt</div><div class="value">${money(total.realizableAmt)}</div></div>
+        <div class="stat-card"><div class="label">Total Net Collection</div><div class="value green">${money(total.netCollection)}</div></div>
       </div>`;
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      results.innerHTML = '';
+    }
+  });
+}
+
+const SIMPLE_NIGHT_FIELDS = [
+  ['Realizable', 'realizableAmt', 'money'],
+  ['Collection', 'netCollection', 'money'],
+  ['PNB Deposit', 'pnbDeposit', 'money'],
+  ['PNB UPI', 'pnbUpi', 'money'],
+  ['HDFC UPI', 'hdfcUpi', 'money'],
+  ['HDFC Deposit', 'hdfcDeposit', 'money'],
+  ['Cash Open', 'openCash', 'money'],
+  ['Cash Close', 'closeCash', 'money'],
+  ['Fulpaid No', 'fulpaidNo', 'num'],
+  ['Disb No', 'disbNo', 'num'],
+  ['Disb Amt', 'disbAmt', 'money'],
+  ['Closing Outstanding', 'closingOutstanding', 'money'],
+  ['Closing Customer', 'closingCustomer', 'num']
+];
+
+const DETAILED_NIGHT_FIELDS = [
+  ['Opening Customer', 'openingCustomer', 'num'],
+  ['Opening Outstanding', 'openingOutstanding', 'money'],
+  ['Open Cash', 'openCash', 'money'],
+  ['Realizable No', 'realizableNo', 'num'],
+  ['Realizable Amt', 'realizableAmt', 'money'],
+  ['Realised No', 'realisedNo', 'num'],
+  ['Realised Amt', 'realisedAmt', 'money'],
+  ['Advance Amt', 'advanceAmt', 'money'],
+  ['Loan Closer Amt', 'loanCloserAmt', 'money'],
+  ['Overdue Collect Amt', 'overdueCollectAmt', 'money'],
+  ['Net Collection', 'netCollection', 'money'],
+  ['Misc Inc', 'miscInc', 'money'],
+  ['Total Income', 'totalIncome', 'money'],
+  ['Fulpaid No', 'fulpaidNo', 'num'],
+  ['Disb No', 'disbNo', 'num'],
+  ['Disb Amt', 'disbAmt', 'money'],
+  ['Closing Customer', 'closingCustomer', 'num'],
+  ['Closing Outstanding', 'closingOutstanding', 'money'],
+  ['PNB UPI', 'pnbUpi', 'money'],
+  ['PNB Deposit', 'pnbDeposit', 'money'],
+  ['HDFC UPI', 'hdfcUpi', 'money'],
+  ['HDFC Deposit', 'hdfcDeposit', 'money'],
+  ['Misc Exp', 'miscExp', 'money'],
+  ['Total Expense', 'totalExpense', 'money'],
+  ['Close Cash', 'closeCash', 'money'],
+  ['OTR', 'otr', 'pct'],
+  ['Overdue No', 'overdueNo', 'num'],
+  ['Overdue Amt', 'overdueAmt', 'money'],
+  ['Overdue Outstanding', 'overdueOutstanding', 'money']
+];
+
+function nrFmt(val, type) {
+  if (type === 'money') return money(val);
+  if (type === 'pct') return (Number(val) || 0).toFixed(2) + '%';
+  return String(val);
+}
+
+function detailedNightTableHtml(columns) {
+  const rowsHtml = DETAILED_NIGHT_FIELDS.map(([label, key, type]) => `
+    <tr><td style="font-weight:500;">${escapeHtml(label)}</td>
+      ${columns.map(col => `<td>${nrFmt(col.data[key], type)}</td>`).join('')}
+    </tr>`).join('');
+  return `
+  <div class="card">
+    <div class="table-wrap"><table>
+      <thead><tr><th></th>${columns.map(col => `<th>${escapeHtml(col.label)}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>
+  </div>`;
+}
+
+async function renderSimpleNightReport() {
+  const main = document.getElementById('mainContent');
+  const role = normRole(SESSION.role);
+  const isHO = role === 'HO';
+
+  main.innerHTML = `
+  <div class="card">
+    ${reportBackBtn()}
+    <h3>Night Report</h3>
+    <div class="field"><label>Date</label><input type="date" id="snr_date" /></div>
+    <button class="btn-primary" type="button" id="snr_go">Load</button>
+    <p id="snr_error" class="error hidden"></p>
+  </div>
+  <div id="snr_results"></div>`;
+  wireReportBack();
+  document.getElementById('snr_date').value = new Date().toISOString().slice(0, 10);
+
+  document.getElementById('snr_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('snr_error');
+    errEl.classList.add('hidden');
+    const results = document.getElementById('snr_results');
+    results.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      if (isHO) {
+        const { dateStr, summary } = await api('getSimpleNightReport', { date: val('snr_date') });
+        results.innerHTML = `
+        <div class="card"><h3>Date: ${escapeHtml(dateStr)}</h3>
+          <div class="table-wrap"><table><tbody>
+            ${SIMPLE_NIGHT_FIELDS.map(([label, key, type]) => `<tr><td style="font-weight:500;">${escapeHtml(label)}</td><td>${type === 'money' ? money(summary[key]) : summary[key]}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>`;
+      } else {
+        const { dateStr, rows, total } = await api('getDetailedNightReport', { date: val('snr_date') });
+        const columns = rows.map(r => ({ label: r.branch, data: r })).concat(rows.length > 1 ? [{ label: 'Total', data: total }] : []);
+        results.innerHTML = `<h3 style="margin:0 0 10px 2px;">Date: ${escapeHtml(dateStr)}</h3>` + detailedNightTableHtml(columns);
+      }
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
@@ -1533,111 +1652,6 @@ async function renderLogs() {
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-}
-const NIGHT_REPORT_FIELDS = [
-  ['Opening Customer', 'openingCustomer', 'num'],
-  ['Opening Outstanding', 'openingOutstanding', 'money'],
-  ['Open Cash', 'openCash', 'money'],
-  ['Realizable No', 'realizableNo', 'num'],
-  ['Realizable Amt', 'realizableAmt', 'money'],
-  ['Realised No', 'realisedNo', 'num'],
-  ['Realised Amt', 'realisedAmt', 'money'],
-  ['Advance Amt', 'advanceAmt', 'money'],
-  ['Loan Closer Amt', 'loanCloserAmt', 'money'],
-  ['Overdue Collect Amt', 'overdueCollectAmt', 'money'],
-  ['Net Collection', 'netCollection', 'money'],
-  ['Misc Inc', 'miscInc', 'money'],
-  ['Total Income', 'totalIncome', 'money'],
-  ['Fulpaid No', 'fulpaidNo', 'num'],
-  ['Disb No', 'disbNo', 'num'],
-  ['Disb Amt', 'disbAmt', 'money'],
-  ['Closing Customer', 'closingCustomer', 'num'],
-  ['Closing Outstanding', 'closingOutstanding', 'money'],
-  ['PNB UPI', 'pnbUpi', 'money'],
-  ['PNB Deposit', 'pnbDeposit', 'money'],
-  ['HDFC UPI', 'hdfcUpi', 'money'],
-  ['HDFC Deposit', 'hdfcDeposit', 'money'],
-  ['Misc Exp', 'miscExp', 'money'],
-  ['Total Expense', 'totalExpense', 'money'],
-  ['Close Cash', 'closeCash', 'money'],
-  ['OTR', 'otr', 'pct'],
-  ['Overdue No', 'overdueNo', 'num'],
-  ['Overdue Amt', 'overdueAmt', 'money'],
-  ['Overdue Outstanding', 'overdueOutstanding', 'money']
-];
-
-function nrFmt(val, type) {
-  if (type === 'money') return money(val);
-  if (type === 'pct') return (Number(val) || 0).toFixed(2) + '%';
-  return String(val);
-}
-
-function nightReportTableHtml(title, columns) {
-  const rowsHtml = NIGHT_REPORT_FIELDS.map(([label, key, type]) => `
-    <tr><td style="font-weight:500;">${escapeHtml(label)}</td>
-      ${columns.map(col => `<td>${nrFmt(col.data[key], type)}</td>`).join('')}
-    </tr>`).join('');
-  return `
-  <div class="card">
-    <h3>${escapeHtml(title)}</h3>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Branch</th>${columns.map(col => `<th>${escapeHtml(col.label)}</th>`).join('')}</tr></thead>
-      <tbody>${rowsHtml}</tbody>
-    </table></div>
-  </div>`;
-}
-
-async function renderNightReport() {
-  const main = document.getElementById('mainContent');
-  const role = normRole(SESSION.role);
-  const isBranchOnly = BRANCH_ROLES.includes(role);
-  const isArea = role === AREA_ROLE;
-  const isAllBranch = ALL_BRANCH_ROLES.includes(role);
-
-  main.innerHTML = `
-  <div class="card">
-    <button class="btn-ghost" type="button" id="nr_back" style="margin-bottom:14px;">&larr; Back to Report</button>
-    <h3>Night Report</h3>
-    <div class="field"><label>Date</label><input type="date" id="nr_date" /></div>
-    <button class="btn-primary" type="button" id="nr_go">Show Report</button>
-    <p id="nr_error" class="error hidden"></p>
-  </div>
-  <div id="nr_results"></div>`;
-
-  document.getElementById('nr_back').addEventListener('click', renderReport);
-  document.getElementById('nr_date').value = new Date().toISOString().slice(0, 10);
-
-  document.getElementById('nr_go').addEventListener('click', async () => {
-    const errEl = document.getElementById('nr_error');
-    errEl.classList.add('hidden');
-    const results = document.getElementById('nr_results');
-    results.innerHTML = '<p class="muted">Loading...</p>';
-    const dateStr = val('nr_date');
-    try {
-      if (isBranchOnly) {
-        const { row } = await api('getBranchNightReport', { date: dateStr });
-        results.innerHTML = nightReportTableHtml(SESSION.branch, [{ label: SESSION.branch, data: row }]);
-      } else if (isArea) {
-        const { rows, total } = await api('getAreaNightReport', { date: dateStr });
-        const columns = rows.map(r => ({ label: r.branch, data: r })).concat([{ label: 'Total', data: total }]);
-        results.innerHTML = nightReportTableHtml(`Area: ${SESSION.area}`, columns);
-      } else if (isAllBranch) {
-        const { areas, divisionTotal } = await api('getHONightReport', { date: dateStr });
-        let html = areas.map(a => {
-          const columns = a.rows.map(r => ({ label: r.branch, data: r })).concat([{ label: 'Total', data: a.total }]);
-          return nightReportTableHtml(`Area: ${a.area}`, columns);
-        }).join('');
-        html += nightReportTableHtml('Division Total', [{ label: 'Total', data: divisionTotal }]);
-        results.innerHTML = html;
-      }
-    } catch (err) {
-      errEl.textContent = err.message;
-      errEl.classList.remove('hidden');
-      results.innerHTML = '';
-    }
-  });
-
-  document.getElementById('nr_go').click();
 }
 
 function fmtDate(d) {
