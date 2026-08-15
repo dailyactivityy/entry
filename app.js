@@ -1439,6 +1439,7 @@ async function renderReport() {
   main.innerHTML = `
   <div class="card">
     <h3>Report</h3>
+    <button class="btn-ghost" type="button" id="r_nightBtn" style="margin-bottom:14px;">Night Report</button>
     <div class="field-row">
       <div class="field"><label>From Date</label><input type="date" id="r_from" /></div>
       <div class="field"><label>To Date</label><input type="date" id="r_to" /></div>
@@ -1450,6 +1451,8 @@ async function renderReport() {
     <p id="r_error" class="error hidden"></p>
   </div>
   <div id="r_results"></div>`;
+
+  document.getElementById('r_nightBtn').addEventListener('click', renderNightReport);
 
   if (!isBranchOnly) {
     try {
@@ -1531,6 +1534,112 @@ async function renderLogs() {
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 }
+const NIGHT_REPORT_FIELDS = [
+  ['Opening Customer', 'openingCustomer', 'num'],
+  ['Opening Outstanding', 'openingOutstanding', 'money'],
+  ['Open Cash', 'openCash', 'money'],
+  ['Realizable No', 'realizableNo', 'num'],
+  ['Realizable Amt', 'realizableAmt', 'money'],
+  ['Realised No', 'realisedNo', 'num'],
+  ['Realised Amt', 'realisedAmt', 'money'],
+  ['Advance Amt', 'advanceAmt', 'money'],
+  ['Loan Closer Amt', 'loanCloserAmt', 'money'],
+  ['Overdue Collect Amt', 'overdueCollectAmt', 'money'],
+  ['Net Collection', 'netCollection', 'money'],
+  ['Misc Inc', 'miscInc', 'money'],
+  ['Total Income', 'totalIncome', 'money'],
+  ['Fulpaid No', 'fulpaidNo', 'num'],
+  ['Disb No', 'disbNo', 'num'],
+  ['Disb Amt', 'disbAmt', 'money'],
+  ['Closing Customer', 'closingCustomer', 'num'],
+  ['Closing Outstanding', 'closingOutstanding', 'money'],
+  ['PNB UPI', 'pnbUpi', 'money'],
+  ['PNB Deposit', 'pnbDeposit', 'money'],
+  ['HDFC UPI', 'hdfcUpi', 'money'],
+  ['HDFC Deposit', 'hdfcDeposit', 'money'],
+  ['Misc Exp', 'miscExp', 'money'],
+  ['Total Expense', 'totalExpense', 'money'],
+  ['Close Cash', 'closeCash', 'money'],
+  ['OTR', 'otr', 'pct'],
+  ['Overdue No', 'overdueNo', 'num'],
+  ['Overdue Amt', 'overdueAmt', 'money'],
+  ['Overdue Outstanding', 'overdueOutstanding', 'money']
+];
+
+function nrFmt(val, type) {
+  if (type === 'money') return money(val);
+  if (type === 'pct') return (Number(val) || 0).toFixed(2) + '%';
+  return String(val);
+}
+
+function nightReportTableHtml(title, columns) {
+  const rowsHtml = NIGHT_REPORT_FIELDS.map(([label, key, type]) => `
+    <tr><td style="font-weight:500;">${escapeHtml(label)}</td>
+      ${columns.map(col => `<td>${nrFmt(col.data[key], type)}</td>`).join('')}
+    </tr>`).join('');
+  return `
+  <div class="card">
+    <h3>${escapeHtml(title)}</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Branch</th>${columns.map(col => `<th>${escapeHtml(col.label)}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>
+  </div>`;
+}
+
+async function renderNightReport() {
+  const main = document.getElementById('mainContent');
+  const role = normRole(SESSION.role);
+  const isBranchOnly = BRANCH_ROLES.includes(role);
+  const isArea = role === AREA_ROLE;
+  const isAllBranch = ALL_BRANCH_ROLES.includes(role);
+
+  main.innerHTML = `
+  <div class="card">
+    <button class="btn-ghost" type="button" id="nr_back" style="margin-bottom:14px;">&larr; Back to Report</button>
+    <h3>Night Report</h3>
+    <div class="field"><label>Date</label><input type="date" id="nr_date" /></div>
+    <button class="btn-primary" type="button" id="nr_go">Show Report</button>
+    <p id="nr_error" class="error hidden"></p>
+  </div>
+  <div id="nr_results"></div>`;
+
+  document.getElementById('nr_back').addEventListener('click', renderReport);
+  document.getElementById('nr_date').value = new Date().toISOString().slice(0, 10);
+
+  document.getElementById('nr_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('nr_error');
+    errEl.classList.add('hidden');
+    const results = document.getElementById('nr_results');
+    results.innerHTML = '<p class="muted">Loading...</p>';
+    const dateStr = val('nr_date');
+    try {
+      if (isBranchOnly) {
+        const { row } = await api('getBranchNightReport', { date: dateStr });
+        results.innerHTML = nightReportTableHtml(SESSION.branch, [{ label: SESSION.branch, data: row }]);
+      } else if (isArea) {
+        const { rows, total } = await api('getAreaNightReport', { date: dateStr });
+        const columns = rows.map(r => ({ label: r.branch, data: r })).concat([{ label: 'Total', data: total }]);
+        results.innerHTML = nightReportTableHtml(`Area: ${SESSION.area}`, columns);
+      } else if (isAllBranch) {
+        const { areas, divisionTotal } = await api('getHONightReport', { date: dateStr });
+        let html = areas.map(a => {
+          const columns = a.rows.map(r => ({ label: r.branch, data: r })).concat([{ label: 'Total', data: a.total }]);
+          return nightReportTableHtml(`Area: ${a.area}`, columns);
+        }).join('');
+        html += nightReportTableHtml('Division Total', [{ label: 'Total', data: divisionTotal }]);
+        results.innerHTML = html;
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      results.innerHTML = '';
+    }
+  });
+
+  document.getElementById('nr_go').click();
+}
+
 function fmtDate(d) {
   try { return new Date(d).toLocaleString('en-IN'); } catch { return String(d); }
 }
