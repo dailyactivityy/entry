@@ -136,6 +136,7 @@ input,select{font-family:inherit;}
 
 /* forms that are just a single card of fields shouldn't stretch edge to edge */
 .card:has(form){max-width:640px;}
+.card.full-width, .card.full-width:has(form){max-width:none;}
 
 /* ---------- Cards / stats ---------- */
 .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:16px;}
@@ -156,6 +157,7 @@ input,select{font-family:inherit;}
 }
 .field input:focus, .field select:focus{border-color:var(--green);}
 .field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:600px;}
+.field-row-wide{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; max-width:none;}
 
 /* customer collection row */
 .cust-row{
@@ -215,4 +217,14 @@ table td{padding:12px 16px; border-bottom:1px solid var(--line); white-space:now
 @media (max-width:480px){
   .field-row{grid-template-columns:1fr;}
   .cust-action input{width:90px;}
+}
+
+/* Remove the up/down spinner arrows on every number input across the app */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+input[type="number"]{
+  -moz-appearance:textfield;
 }
