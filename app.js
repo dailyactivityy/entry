@@ -272,7 +272,7 @@ async function loadCustomersForGroup() {
       <div class="cust-row" data-id="${c.customerId}">
         <div class="cust-info">
           <div class="cust-name">${escapeHtml(c.name)}</div>
-          <div class="cust-sub">${escapeHtml(c.husbandName || '')} · Loan ${money(c.loanAmt)} · EMI ${escapeHtml(String(c.emi))}</div>
+          <div class="cust-sub">${escapeHtml(c.husbandName || '')}${c.phNo ? ' · ' + escapeHtml(String(c.phNo)) : ''} · Loan ${money(c.loanAmt)} · EMI ${escapeHtml(String(c.emi))}</div>
           <div class="cust-outstanding">Outstanding: <b>${money(c.currentOutstanding)}</b></div>
         </div>
         <div class="cust-action">
@@ -365,11 +365,12 @@ async function renderDailySheet() {
 // ============================================================
 async function renderDisburse() {
   const main = document.getElementById('mainContent');
+  const todayLabel = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   main.innerHTML = `
-  <div class="card">
+  <div class="card full-width">
     <h3>Add New Loan Disbursement</h3>
     <form id="disburseForm">
-      <div class="field-row">
+      <div class="field-row-wide">
         <div class="field"><label>Day</label>
           <select id="d_day">
             <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
@@ -381,33 +382,55 @@ async function renderDisburse() {
             <option value="">-- Select Group --</option>
           </select>
         </div>
+        <div class="field"><label>Disb Date</label><input value="${todayLabel}" disabled /></div>
       </div>
-      <div class="field"><label>Customer Name</label><input id="d_name" required /></div>
-      <div class="field-row">
+      <div class="field-row-wide">
+        <div class="field"><label>Customer Name</label><input id="d_name" required /></div>
         <div class="field"><label>Husband Name</label><input id="d_husband" /></div>
         <div class="field"><label>Phone No</label><input id="d_phone" /></div>
       </div>
-      <div class="field-row">
-        <div class="field"><label>Disb Date</label><input type="date" id="d_date" required /></div>
-        <div class="field"><label>Loan Amt</label><input type="number" id="d_loanamt" required /></div>
+      <div class="field-row-wide">
+        <div class="field"><label>Loan Amt</label>
+          <select id="d_loanamt" required><option value="">-- Select Loan Amount --</option></select>
+        </div>
+        <div class="field"><label>Outstanding (auto)</label><input id="d_outstanding_display" disabled /></div>
+        <div class="field"><label>EMI - weeks 1 to 49 (auto)</label><input id="d_emi_display" disabled /></div>
       </div>
-      <div class="field"><label>EMI</label><input id="d_emi" /></div>
-      <div class="field-row">
+      <div class="field"><label class="muted" style="display:block; margin-bottom:12px;" id="d_lastemi_note"></label></div>
+      <div class="field-row-wide">
         <div class="field"><label>Aadhar No</label><input id="d_aadhar" /></div>
         <div class="field"><label>Pan No</label><input id="d_pan" /></div>
-      </div>
-      <div class="field-row">
         <div class="field"><label>A/C No</label><input id="d_ac" /></div>
         <div class="field"><label>IFSC Code</label><input id="d_ifsc" /></div>
       </div>
       <button class="btn-primary" type="submit">Disburse Loan</button>
       <p id="disburseError" class="error hidden"></p>
     </form>
-  </div>
-  <div class="card"><h3>Recent Disbursements</h3><div id="recentDisb"><p class="muted">Loading...</p></div></div>`;
+  </div>`;
 
   document.getElementById('d_day').addEventListener('change', loadGroupsForDay);
   loadGroupsForDay(); // load groups for the default selected day
+
+  // Populate the Loan Amt dropdown from the standard slab table, and
+  // auto-fill Outstanding + EMI the moment a slab is picked - staff never
+  // type these, so they can never be entered wrong.
+  try {
+    const { table } = await api('getLoanTable');
+    const sel = document.getElementById('d_loanamt');
+    Object.keys(table).sort((a, b) => Number(a) - Number(b)).forEach(amt => {
+      const opt = document.createElement('option');
+      opt.value = amt; opt.textContent = money(Number(amt));
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => {
+      const slab = table[sel.value];
+      document.getElementById('d_outstanding_display').value = slab ? money(slab.outstanding) : '';
+      document.getElementById('d_emi_display').value = slab ? money(slab.emi) : '';
+      document.getElementById('d_lastemi_note').textContent = slab ? `50th (final) installment will be ${money(slab.lastEmi)}` : '';
+    });
+  } catch (err) {
+    toast('Could not load loan amount options', true);
+  }
 
   document.getElementById('disburseForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -415,23 +438,25 @@ async function renderDisburse() {
     errEl.classList.add('hidden');
     const payload = {
       day: val('d_day'), groupName: val('d_group'), customerName: val('d_name'),
-      husbandName: val('d_husband'), phNo: val('d_phone'), disbDate: val('d_date'),
-      loanAmt: val('d_loanamt'), emi: val('d_emi'), aadharNo: val('d_aadhar'),
+      husbandName: val('d_husband'), phNo: val('d_phone'),
+      loanAmt: val('d_loanamt'), aadharNo: val('d_aadhar'),
       panNo: val('d_pan'), acNo: val('d_ac'), ifscCode: val('d_ifsc')
     };
     if (!payload.groupName) { errEl.textContent = 'Please select a group'; errEl.classList.remove('hidden'); return; }
+    if (!payload.loanAmt) { errEl.textContent = 'Please select a loan amount'; errEl.classList.remove('hidden'); return; }
     try {
       await api('addDisbursement', payload);
       toast('Loan disbursed successfully');
       e.target.reset();
+      document.getElementById('d_outstanding_display').value = '';
+      document.getElementById('d_emi_display').value = '';
+      document.getElementById('d_lastemi_note').textContent = '';
       loadGroupsForDay();
-      loadRecentDisb();
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
     }
   });
-  loadRecentDisb();
 }
 
 async function loadGroupsForDay() {
@@ -446,19 +471,6 @@ async function loadGroupsForDay() {
 }
 
 function val(id) { return document.getElementById(id).value; }
-
-async function loadRecentDisb() {
-  const wrap = document.getElementById('recentDisb');
-  try {
-    const { recentDisbursements } = await api('getBranchSummary');
-    if (!recentDisbursements.length) { wrap.innerHTML = '<div class="empty-state">No disbursements yet</div>'; return; }
-    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Group</th><th>Amt</th><th>Date</th></tr></thead><tbody>
-      ${recentDisbursements.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.LoanAmt)}</td><td>${escapeHtml(String(r.DisbDate))}</td></tr>`).join('')}
-    </tbody></table></div>`;
-  } catch (err) {
-    wrap.innerHTML = `<p class="error">${err.message}</p>`;
-  }
-}
 
 // ============================================================
 // BRANCH: SUMMARY
@@ -822,17 +834,7 @@ function branchDetailHtml(b, showBack) {
     </div>
     <button class="btn-primary" type="button" id="oc_save" data-branch="${escapeHtml(b.branch)}">Save Open Cash</button>
     <p id="ocError" class="error hidden"></p>
-  </div>` : ''}
-  <div class="card"><h3>Recent Collections</h3>
-    ${b.recentCollections.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th><th>Staff</th></tr></thead><tbody>
-      ${b.recentCollections.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="empty-state">No collections yet</div>'}
-  </div>
-  <div class="card"><h3>Recent Disbursements</h3>
-    ${b.recentDisbursements.length ? `<div class="table-wrap"><table><thead><tr><th>Customer</th><th>Group</th><th>Amt</th></tr></thead><tbody>
-      ${b.recentDisbursements.map(r => `<tr><td>${escapeHtml(r.CustomerName)}</td><td>${escapeHtml(r.GroupName)}</td><td>${money(r.LoanAmt)}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="empty-state">No disbursements yet</div>'}
-  </div>`;
+  </div>` : ''}`;
 }
 
 function wireOpenCashCard() {
@@ -926,7 +928,7 @@ async function loadAMCustomers() {
       <div class="cust-row" data-row="${c.collectionRow || ''}" data-cust="${escapeHtml(c.name)}">
         <div class="cust-info">
           <div class="cust-name">${escapeHtml(c.name)}</div>
-          <div class="cust-sub">${escapeHtml(c.husbandName || '')} · Loan ${money(c.loanAmt)} · EMI ${escapeHtml(String(c.emi))}</div>
+          <div class="cust-sub">${escapeHtml(c.husbandName || '')}${c.phNo ? ' · ' + escapeHtml(String(c.phNo)) : ''} · Loan ${money(c.loanAmt)} · EMI ${escapeHtml(String(c.emi))}</div>
           <div class="cust-outstanding">Outstanding: <b>${money(c.currentOutstanding)}</b></div>
         </div>
         <div class="cust-action">
