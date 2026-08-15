@@ -120,6 +120,9 @@ input,select{font-family:inherit;}
 }
 .btn-ghost:hover{background:var(--bg);}
 
+.report-menu{display:flex; flex-direction:column; gap:10px;}
+.report-menu-btn{padding:16px; font-size:14.5px; text-align:left;}
+
 .nav-overlay{
   position:fixed; inset:0; background:rgba(10,20,28,0.45); z-index:25;
 }
