@@ -18,12 +18,6 @@ function normRole(role) {
   return LEGACY_ROLE_MAP[r] || r;
 }
 
-// ============================================================
-// AUTO-CAPITALIZE ALL TEXT TYPED IN THE APP
-// Any plain text input (name, address, group, aadhar, pan, ifsc, etc.)
-// is automatically converted to CAPITAL letters as the user types.
-// Number/date/password/tel inputs are left untouched.
-// ============================================================
 document.addEventListener('input', (e) => {
   const el = e.target;
   const isPlainTextInput = el.tagName === 'INPUT' && (el.type === 'text' || el.type === '' || el.type === undefined);
@@ -74,9 +68,6 @@ function numOrBlank(n) {
   return n === 0 ? '' : String(n);
 }
 
-// ============================================================
-// LOGIN
-// ============================================================
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const phone = document.getElementById('loginPhone').value.trim();
@@ -341,9 +332,6 @@ async function renderDailySheet() {
   }
 }
 
-// ============================================================
-// BRANCH: LOAN DISBURSED
-// ============================================================
 async function renderDisburse() {
   const main = document.getElementById('mainContent');
   const todayLabel = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -447,29 +435,33 @@ async function loadGroupsForDay() {
     const sel = document.getElementById('d_group');
     if (sel) sel.innerHTML = `<option value="">-- Select Group --</option>` + groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
   } catch (err) {
-    // silently ignore - group list is a convenience, not required for the rest of the form
   }
 }
 
 function val(id) { return document.getElementById(id).value; }
 
-// ============================================================
-// BRANCH: SUMMARY
-// ============================================================
-// Shared stat-card grid used by Branch Summary, Area Overview, Admin Overview and branch drill-down.
 function statCardsHtml(s) {
   return `
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Total Customers</div><div class="value">${s.customerCount}</div></div>
       <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Today's Collection</div><div class="value green">${money(s.todayCollectionTotal)}</div></div>
-      <div class="stat-card"><div class="label">Today's Collection Count</div><div class="value">${s.todayCollectionCount}</div></div>
+      <div class="stat-card"><div class="label">Net Collection</div><div class="value green">${money(s.netCollection)}</div></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="label">Realizable Amt</div><div class="value">${money(s.realizableAmt)}</div></div>
       <div class="stat-card"><div class="label">Realizable No</div><div class="value">${s.realizableNo}</div></div>
-      <div class="stat-card"><div class="label">Overdue No</div><div class="value">${s.overdueNo}</div></div>
-      <div class="stat-card"><div class="label">Overdue Outstanding</div><div class="value">${money(s.overdueOutstanding)}</div></div>
+      <div class="stat-card"><div class="label">Realizable Amt</div><div class="value">${money(s.realizableAmt)}</div></div>
+      <div class="stat-card"><div class="label">Realised No</div><div class="value green">${s.realisedNo}</div></div>
+      <div class="stat-card"><div class="label">Realised Amt</div><div class="value green">${money(s.realisedAmt)}</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Advance Amt</div><div class="value">${money(s.advanceAmt)}</div></div>
+      <div class="stat-card"><div class="label">Loan Closer Amt</div><div class="value">${money(s.loanCloserAmt)}</div></div>
+      <div class="stat-card"><div class="label">Overdue Collect Amt</div><div class="value">${money(s.overdueCollectAmt)}</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Overdue No</div><div class="value" style="color:#B3261E;">${s.overdueNo}</div></div>
+      <div class="stat-card"><div class="label">Overdue Amt</div><div class="value" style="color:#B3261E;">${money(s.overdueAmt)}</div></div>
+      <div class="stat-card"><div class="label">Overdue Outstanding</div><div class="value" style="color:#B3261E;">${money(s.overdueOutstanding)}</div></div>
     </div>
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Death No</div><div class="value">${s.deathNo}</div></div>
@@ -771,7 +763,7 @@ async function renderAreaOverview() {
     <div class="card"><h3>Branches</h3>
       ${s.branches.map(b => `
         <div class="branch-list-item" style="cursor:default;">
-          <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Today ${money(b.todayCollectionTotal)}</div></div>
+          <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Net Collection ${money(b.netCollection)}</div></div>
           <div class="amt">${money(b.totalOutstanding)}</div>
         </div>`).join('')}
     </div>`;
@@ -1013,9 +1005,6 @@ async function openAMBranchDailyPopup(branch) {
   }
 }
 
-// ============================================================
-// A.M: LOAN DISBURSED
-// ============================================================
 let amDisbState = { branch: '', date: '' };
 
 async function renderAMDisburse() {
@@ -1222,7 +1211,7 @@ async function renderAdminOverview() {
       <div class="card"><h3>Branches</h3>
         ${area.branches.map(b => `
           <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
-            <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Today ${money(b.todayCollectionTotal)}</div></div>
+            <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Net Collection ${money(b.netCollection)}</div></div>
             <div class="amt">${money(b.totalOutstanding)}</div>
           </div>`).join('')}
       </div>`;
@@ -1236,15 +1225,19 @@ async function renderAdminOverview() {
     <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">All Branches — Grand Total</h3></div>
     ${statCardsHtml({
       customerCount: s.grandCustomerCount, totalOutstanding: s.grandTotalOutstanding,
-      todayCollectionTotal: s.grandTodayCollection, todayCollectionCount: s.grandTodayCollectionCount,
-      realizableAmt: s.grandRealizableAmt, realizableNo: s.grandRealizableNo,
-      overdueNo: s.grandOverdueNo, overdueOutstanding: s.grandOverdueOutstanding,
-      deathNo: s.grandDeathNo, deathOutstanding: s.grandDeathOutstanding
+      netCollection: s.grandNetCollection,
+      realizableNo: s.grandRealizableNo, realizableAmt: s.grandRealizableAmt,
+      realisedNo: s.grandRealisedNo, realisedAmt: s.grandRealisedAmt,
+      advanceAmt: s.grandAdvanceAmt, loanCloserAmt: s.grandLoanCloserAmt,
+      overdueCollectAmt: s.grandOverdueCollectAmt,
+      overdueNo: s.grandOverdueNo, overdueAmt: s.grandOverdueAmt, overdueOutstanding: s.grandOverdueOutstanding,
+      deathNo: s.grandDeathNo, deathOutstanding: s.grandDeathOutstanding,
+      openCash: s.grandOpenCash, closeCash: s.grandCloseCash, cashStarted: true
     })}
     <div class="card"><h3>Areas</h3>
       ${s.areas.map(a => `
         <div class="branch-list-item" data-a="${escapeHtml(a.area)}">
-          <div><div class="name">${escapeHtml(a.area)}</div><div class="sub">${a.branches.length} branches · Today ${money(a.todayCollectionTotal)}</div></div>
+          <div><div class="name">${escapeHtml(a.area)}</div><div class="sub">${a.branches.length} branches · Net Collection ${money(a.netCollection)}</div></div>
           <div class="amt">${money(a.totalOutstanding)}</div>
         </div>`).join('')}
     </div>`;
@@ -1438,9 +1431,6 @@ async function renderHOReport() {
   });
 }
 
-// ============================================================
-// REPORT (all roles - scoped automatically to what they're allowed to see)
-
 async function renderReport() {
   const main = document.getElementById('mainContent');
   const role = normRole(SESSION.role);
@@ -1507,9 +1497,6 @@ async function renderReport() {
   });
 }
 
-// ============================================================
-// ADMIN: LOGS
-// ============================================================
 async function renderLogs() {
   const main = document.getElementById('mainContent');
   try {
