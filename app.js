@@ -478,41 +478,57 @@ async function loadGroupsForDay() {
 
 function val(id) { return document.getElementById(id).value; }
 
-function statCardsHtml(s) {
+function ovItem(label, value, accent) {
+  return `<div class="ov-item"><div class="label">${label}</div><div class="value${accent ? ' accent' : ''}">${value}</div></div>`;
+}
+
+function ovSection(color, tab, sub, itemsHtml) {
   return `
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Total Customers</div><div class="value">${s.customerCount}</div></div>
-      <div class="stat-card"><div class="label">Total Outstanding</div><div class="value">${money(s.totalOutstanding)}</div></div>
-      <div class="stat-card"><div class="label">Net Collection</div><div class="value green">${money(s.netCollection)}</div></div>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Realizable No</div><div class="value">${s.realizableNo}</div></div>
-      <div class="stat-card"><div class="label">Realizable Amt</div><div class="value">${money(s.realizableAmt)}</div></div>
-      <div class="stat-card"><div class="label">Realised No</div><div class="value green">${s.realisedNo}</div></div>
-      <div class="stat-card"><div class="label">Realised Amt</div><div class="value green">${money(s.realisedAmt)}</div></div>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Advance Amt</div><div class="value">${money(s.advanceAmt)}</div></div>
-      <div class="stat-card"><div class="label">Loan Closer Amt</div><div class="value">${money(s.loanCloserAmt)}</div></div>
-      <div class="stat-card"><div class="label">Overdue Collect Amt</div><div class="value">${money(s.overdueCollectAmt)}</div></div>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Overdue No</div><div class="value" style="color:#B3261E;">${s.overdueNo}</div></div>
-      <div class="stat-card"><div class="label">Overdue Amt</div><div class="value" style="color:#B3261E;">${money(s.overdueAmt)}</div></div>
-      <div class="stat-card"><div class="label">Overdue Outstanding</div><div class="value" style="color:#B3261E;">${money(s.overdueOutstanding)}</div></div>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Death No</div><div class="value">${s.deathNo}</div></div>
-      <div class="stat-card"><div class="label">Death Outstanding</div><div class="value">${money(s.deathOutstanding)}</div></div>
-    </div>
-    ${s.closeCash !== undefined ? `
-    ${s.cashStarted === false ? `
-    <div class="card"><p class="muted" style="margin:0;">Cash tracking hasn't started for this branch yet - ask Admin to set today's Open Cash.</p></div>
-    ` : `
-    <div class="stat-grid">
-      <div class="stat-card"><div class="label">Open Cash</div><div class="value">${money(s.openCash)}</div></div>
-      <div class="stat-card"><div class="label">Close Cash</div><div class="value green">${money(s.closeCash)}</div></div>
-    </div>`}` : ''}`;
+  <div class="ov-section" style="--ov-accent:${color};">
+    <div class="ov-section-head"><span class="ov-section-tab">${tab}</span><span class="ov-section-sub">${sub}</span></div>
+    <div class="ov-grid">${itemsHtml}</div>
+  </div>`;
+}
+
+function statCardsHtml(s) {
+  const portfolio = ovSection('#0E2A3D', 'Portfolio', 'as of now', [
+    ovItem('Total Customers', s.customerCount),
+    ovItem('Total Outstanding', money(s.totalOutstanding))
+  ].join(''));
+
+  const collection = ovSection('#0E9F6E', 'Collection', "today's activity", [
+    ovItem('Net Collection', money(s.netCollection), true),
+    ovItem('Realizable No', s.realizableNo),
+    ovItem('Realizable Amt', money(s.realizableAmt)),
+    ovItem('Realised No', s.realisedNo, true),
+    ovItem('Realised Amt', money(s.realisedAmt), true),
+    ovItem('Advance Amt', money(s.advanceAmt)),
+    ovItem('Loan Closer Amt', money(s.loanCloserAmt)),
+    ovItem('Overdue Collect Amt', money(s.overdueCollectAmt))
+  ].join(''));
+
+  const overdue = ovSection('#D64545', 'Overdue', 'needs follow-up', [
+    ovItem('Overdue No', s.overdueNo, true),
+    ovItem('Overdue Amt', money(s.overdueAmt), true),
+    ovItem('Overdue Outstanding', money(s.overdueOutstanding), true)
+  ].join(''));
+
+  const death = ovSection('#6B7885', 'Death Cases', 'excluded from active', [
+    ovItem('Death No', s.deathNo),
+    ovItem('Death Outstanding', money(s.deathOutstanding))
+  ].join(''));
+
+  let cashHtml = '';
+  if (s.closeCash !== undefined) {
+    cashHtml = s.cashStarted === false
+      ? `<div class="card"><p class="muted" style="margin:0;">Cash tracking hasn't started for this branch yet - ask Admin to set today's Open Cash.</p></div>`
+      : ovSection('#123A54', 'Cash', 'in hand', [
+          ovItem('Open Cash', money(s.openCash)),
+          ovItem('Close Cash', money(s.closeCash), true)
+        ].join(''));
+  }
+
+  return portfolio + collection + overdue + death + cashHtml;
 }
 
 async function renderBranchSummary() {
@@ -1398,11 +1414,13 @@ function renderReport() {
     <div class="report-menu">
       <button class="btn-ghost report-menu-btn" id="rm_loandisb">Loan Disb</button>
       <button class="btn-ghost report-menu-btn" id="rm_collection">Collection</button>
+      <button class="btn-ghost report-menu-btn" id="rm_outstanding">Outstanding</button>
       <button class="btn-ghost report-menu-btn" id="rm_night">Night Report</button>
     </div>
   </div>`;
   document.getElementById('rm_loandisb').addEventListener('click', renderLoanDisbReport);
   document.getElementById('rm_collection').addEventListener('click', renderCollectionReport);
+  document.getElementById('rm_outstanding').addEventListener('click', renderOutstandingReport);
   document.getElementById('rm_night').addEventListener('click', renderSimpleNightReport);
 }
 
@@ -1578,6 +1596,100 @@ async function renderCollectionReport() {
           </tbody></table>
           <div class="totals"><b>Total Realizable Amt: ${money(total.realizableAmt)}</b><b>Total Net Collection: ${money(total.netCollection)}</b></div>`;
           printReportWindow(`Collection Report - ${val('cr_date')}`, tableHtml);
+        });
+      }
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      results.innerHTML = '';
+    }
+  });
+}
+
+async function renderOutstandingReport() {
+  const main = document.getElementById('mainContent');
+  const role = normRole(SESSION.role);
+  const isBranchOnly = BRANCH_ROLES.includes(role);
+
+  main.innerHTML = `
+  <div class="card">
+    ${reportBackBtn()}
+    <h3>Outstanding Report</h3>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="or_date" /></div>
+      ${isBranchOnly ? '' : `<div class="field"><label>Branch</label><select id="or_branch"><option value="ALL">All Branches</option></select></div>`}
+    </div>
+    <button class="btn-primary" type="button" id="or_go">Load</button>
+    <p id="or_error" class="error hidden"></p>
+  </div>
+  <div id="or_results"></div>`;
+  wireReportBack();
+  document.getElementById('or_date').value = new Date().toISOString().slice(0, 10);
+
+  if (!isBranchOnly) {
+    try {
+      const { branches } = await api('getAllowedBranches');
+      const sel = document.getElementById('or_branch');
+      branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        sel.appendChild(opt);
+      });
+    } catch (err) { }
+  }
+
+  document.getElementById('or_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('or_error');
+    errEl.classList.add('hidden');
+    const results = document.getElementById('or_results');
+    results.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      const payload = { date: val('or_date') };
+      if (!isBranchOnly) payload.branch = val('or_branch');
+      const { rows, total } = await api('getOutstandingReport', payload);
+      const OR_HEADERS = ['Sl', 'Day', 'Branch', 'Group', 'Customer ID', 'Customer Name', 'Ph No', 'Husband Name',
+        'Disb Date', 'Disb Amt', 'Emi Amt', 'Opening Outstanding', 'Collection', 'Closing Outstanding'];
+      const orRow = (r, i) => [i + 1, r.day, r.branch, r.group, r.customerId, r.customerName, r.phNo, r.husbandName,
+        r.disbDate, r.disbAmt, r.emiAmt, r.openingOutstanding, r.collection, r.closingOutstanding];
+      results.innerHTML = `
+      <div class="card"><h3>Outstanding</h3>
+        ${rows.length ? downloadBtnsHtml('or') : ''}
+        ${rows.length ? `<div class="table-wrap"><table><thead><tr>
+          <th>Sl</th><th>Day</th><th>Branch</th><th>Group</th><th>Customer ID</th><th>Customer Name</th><th>Ph No</th>
+          <th>Husband Name</th><th>Disb Date</th><th>Disb Amt</th><th>Emi Amt</th>
+          <th>Opening Outstanding</th><th>Collection</th><th>Closing Outstanding</th>
+        </tr></thead><tbody>
+          ${rows.map((r, i) => `<tr>
+            <td>${i + 1}</td><td>${escapeHtml(r.day)}</td><td>${escapeHtml(r.branch)}</td><td>${escapeHtml(r.group)}</td>
+            <td>${escapeHtml(String(r.customerId))}</td><td>${escapeHtml(r.customerName)}</td><td>${escapeHtml(String(r.phNo))}</td>
+            <td>${escapeHtml(r.husbandName)}</td><td>${escapeHtml(String(r.disbDate))}</td><td>${money(r.disbAmt)}</td>
+            <td>${escapeHtml(String(r.emiAmt))}</td><td>${money(r.openingOutstanding)}</td>
+            <td>${money(r.collection)}</td><td>${money(r.closingOutstanding)}</td>
+          </tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty-state">No customers found</div>'}
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">Opening Outstanding</div><div class="value">${money(total.openingOutstanding)}</div></div>
+        <div class="stat-card"><div class="label">Collection</div><div class="value green">${money(total.collection)}</div></div>
+        <div class="stat-card"><div class="label">Closing Outstanding</div><div class="value">${money(total.closingOutstanding)}</div></div>
+      </div>`;
+
+      if (rows.length) {
+        document.getElementById('or_xls').addEventListener('click', () => {
+          const csvRows = rows.map(orRow);
+          csvRows.push([]);
+          const blankCols = new Array(OR_HEADERS.length - 2).fill('');
+          csvRows.push([...blankCols, 'Opening Outstanding', total.openingOutstanding]);
+          csvRows.push([...blankCols, 'Collection', total.collection]);
+          csvRows.push([...blankCols, 'Closing Outstanding', total.closingOutstanding]);
+          downloadCSV(`Outstanding_${val('or_date')}.csv`, OR_HEADERS, csvRows);
+        });
+        document.getElementById('or_pdf').addEventListener('click', () => {
+          const tableHtml = `<table><thead><tr>${OR_HEADERS.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+            ${rows.map((r, i) => `<tr>${orRow(r, i).map(v => `<td>${escapeHtml(String(v))}</td>`).join('')}</tr>`).join('')}
+          </tbody></table>
+          <div class="totals"><b>Opening Outstanding: ${money(total.openingOutstanding)}</b><b>Collection: ${money(total.collection)}</b><b>Closing Outstanding: ${money(total.closingOutstanding)}</b></div>`;
+          printReportWindow(`Outstanding Report - ${val('or_date')}`, tableHtml);
         });
       }
     } catch (err) {
