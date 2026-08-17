@@ -354,14 +354,24 @@ function renderCustomersForGroup_() {
     wrap.innerHTML = '<div class="empty-state">No customers in this group</div>';
     return;
   }
-  wrap.innerHTML = customers.map(c => {
+
+  const submittedCount = customers.filter(c => c.collectedToday).length;
+  const collectedTotal = customers.reduce((s, c) => s + (c.collectedToday ? (Number(c.collectedAmt) || 0) : 0), 0);
+
+  const summaryHtml = `
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:12px 16px;">
+    <div><b>${submittedCount}</b> / ${customers.length} submitted</div>
+    <div>Collected today: <b class="badge-done" style="padding:4px 10px;">${money(collectedTotal)}</b></div>
+  </div>`;
+
+  const rowsHtml = customers.map((c, idx) => {
     const emiNum = Number(c.emi);
     const hasEmi = isFinite(emiNum) && String(c.emi).trim() !== '';
     const outstanding = Number(c.currentOutstanding) || 0;
     const prefill = hasEmi ? Math.max(0, Math.min(emiNum, outstanding)) : '';
     const locked = c.collectedToday;
     return `
-    <div class="cust-row" data-id="${c.customerId}">
+    <div class="cust-row" data-id="${c.customerId}" data-idx="${idx}">
       <div class="cust-info">
         <div class="cust-name">${escapeHtml(c.name)}</div>
         <div class="cust-sub">${escapeHtml(c.husbandName || '')}${c.phNo ? ' · ' + escapeHtml(String(c.phNo)) : ''} · Loan ${money(c.loanAmt)} · EMI ${escapeHtml(String(c.emi))}</div>
@@ -370,36 +380,50 @@ function renderCustomersForGroup_() {
       <div class="cust-action">
         ${locked
           ? `<span class="badge-done">Submitted ✓ (${money(c.collectedAmt)})</span>`
-          : `<input type="number" min="0" placeholder="Amt" class="putAmtInput" value="${prefill}" />
+          : `<input type="number" min="0" inputmode="decimal" placeholder="Amt" class="putAmtInput" value="${prefill}" />
              <button class="btn-submit-row">Submit</button>`}
       </div>
     </div>`;
   }).join('');
 
-  wrap.querySelectorAll('.cust-row').forEach(row => {
+  wrap.innerHTML = summaryHtml + rowsHtml;
+
+  function submitRow(row) {
     const id = row.dataset.id;
+    const btn = row.querySelector('.btn-submit-row');
+    if (!btn || btn.disabled) return;
+    const input = row.querySelector('.putAmtInput');
+    const amt = Number(input.value);
+    if (input.value === '' || isNaN(amt) || amt < 0) { toast('Please enter a valid amount (0 or more)', true); input.focus(); return; }
+    btn.disabled = true; btn.textContent = '...';
+    api('submitCollection', { customerId: id, putAmt: amt }).then(data => {
+      row.querySelector('.cust-outstanding').innerHTML = `Outstanding: <b>${money(data.newOutstanding)}</b>`;
+      row.querySelector('.cust-action').innerHTML = `<span class="badge-done">Submitted ✓ (${money(amt)})</span>`;
+      const rec = collState.all.find(c => c.customerId === id);
+      if (rec) { rec.collectedToday = true; rec.collectedAmt = amt; rec.currentOutstanding = data.newOutstanding; }
+      toast('Collection submitted');
+      // re-render: refreshes the running total and auto-focuses the next open
+      // amount box, so typing amount -> Enter -> typing amount -> Enter just flows
+      renderCustomersForGroup_();
+    }).catch(err => {
+      toast(err.message, true);
+      btn.disabled = false; btn.textContent = 'Submit';
+    });
+  }
+
+  wrap.querySelectorAll('.cust-row').forEach(row => {
     const btn = row.querySelector('.btn-submit-row');
     if (!btn) return;
     const input = row.querySelector('.putAmtInput');
-    btn.addEventListener('click', async () => {
-      const amt = Number(input.value);
-      if (input.value === '' || isNaN(amt) || amt < 0) { toast('Please enter a valid amount (0 or more)', true); return; }
-      btn.disabled = true; btn.textContent = '...';
-      try {
-        const data = await api('submitCollection', { customerId: id, putAmt: amt });
-        row.querySelector('.cust-outstanding').innerHTML = `Outstanding: <b>${money(data.newOutstanding)}</b>`;
-        row.querySelector('.cust-action').innerHTML = `<span class="badge-done">Submitted ✓ (${money(amt)})</span>`;
-        // keep the in-memory dataset in sync so re-visiting this day/group without a
-        // fresh server call still shows the correct locked/submitted state
-        const rec = collState.all.find(c => c.customerId === id);
-        if (rec) { rec.collectedToday = true; rec.collectedAmt = amt; rec.currentOutstanding = data.newOutstanding; }
-        toast('Collection submitted');
-      } catch (err) {
-        toast(err.message, true);
-        btn.disabled = false; btn.textContent = 'Submit';
-      }
+    btn.addEventListener('click', () => submitRow(row));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submitRow(row); }
     });
   });
+
+  // land the cursor straight in the first open amount box - no tapping needed to start
+  const firstOpenInput = wrap.querySelector('.cust-row .putAmtInput');
+  if (firstOpenInput) firstOpenInput.focus();
 }
 
 async function renderDailySheet() {
