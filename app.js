@@ -4,7 +4,6 @@ const CONFIG = {
 
 let SESSION = JSON.parse(localStorage.getItem('sf_session') || 'null');
 let activeTab = null;
-let areaDrilldownBranch = null; 
 
 const BRANCH_ROLES = ['CO', 'SCO', 'BM'];       
 const AREA_ROLE = 'AM';                          
@@ -852,14 +851,7 @@ async function renderAreaOverview() {
     const s = await api('getAreaSummary');
     main.innerHTML = `
     <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(s.area)} Area</h3></div>
-    ${statCardsHtml(s)}
-    <div class="card"><h3>Branches</h3>
-      ${s.branches.map(b => `
-        <div class="branch-list-item" style="cursor:default;">
-          <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Net Collection ${money(b.netCollection)}</div></div>
-          <div class="amt">${money(b.totalOutstanding)}</div>
-        </div>`).join('')}
-    </div>`;
+    ${statCardsHtml(s)}`;
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
@@ -1283,39 +1275,10 @@ async function loadAMTransactions() {
   }
 }
 
-let adminDrilldownArea = null;
-
 async function renderAdminOverview() {
   const main = document.getElementById('mainContent');
   try {
     const s = await api('getAdminSummary');
-    if (areaDrilldownBranch) {
-      const area = s.areas.find(a => a.area === adminDrilldownArea);
-      const b = area.branches.find(x => x.branch === areaDrilldownBranch);
-      main.innerHTML = branchDetailHtml(b, true);
-      document.getElementById('backBtn').onclick = () => { areaDrilldownBranch = null; renderAdminOverview(); };
-      wireOpenCashCard();
-      return;
-    }
-    if (adminDrilldownArea) {
-      const area = s.areas.find(a => a.area === adminDrilldownArea);
-      main.innerHTML = `
-      <button id="backBtn2" class="back-link">&larr; Back to all areas</button>
-      <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">${escapeHtml(area.area)} Area</h3></div>
-      ${statCardsHtml(area)}
-      <div class="card"><h3>Branches</h3>
-        ${area.branches.map(b => `
-          <div class="branch-list-item" data-b="${escapeHtml(b.branch)}">
-            <div><div class="name">${escapeHtml(b.branch)}</div><div class="sub">${b.customerCount} customers · Net Collection ${money(b.netCollection)}</div></div>
-            <div class="amt">${money(b.totalOutstanding)}</div>
-          </div>`).join('')}
-      </div>`;
-      document.getElementById('backBtn2').onclick = () => { adminDrilldownArea = null; renderAdminOverview(); };
-      main.querySelectorAll('.branch-list-item').forEach(el => {
-        el.addEventListener('click', () => { areaDrilldownBranch = el.dataset.b; renderAdminOverview(); });
-      });
-      return;
-    }
     main.innerHTML = `
     <div class="card" style="margin-bottom:0;"><h3 style="margin:0;">All Branches — Grand Total</h3></div>
     ${statCardsHtml({
@@ -1328,17 +1291,7 @@ async function renderAdminOverview() {
       overdueNo: s.grandOverdueNo, overdueAmt: s.grandOverdueAmt, overdueOutstanding: s.grandOverdueOutstanding,
       deathNo: s.grandDeathNo, deathOutstanding: s.grandDeathOutstanding,
       openCash: s.grandOpenCash, closeCash: s.grandCloseCash, cashStarted: true
-    })}
-    <div class="card"><h3>Areas</h3>
-      ${s.areas.map(a => `
-        <div class="branch-list-item" data-a="${escapeHtml(a.area)}">
-          <div><div class="name">${escapeHtml(a.area)}</div><div class="sub">${a.branches.length} branches · Net Collection ${money(a.netCollection)}</div></div>
-          <div class="amt">${money(a.totalOutstanding)}</div>
-        </div>`).join('')}
-    </div>`;
-    main.querySelectorAll('.branch-list-item').forEach(el => {
-      el.addEventListener('click', () => { adminDrilldownArea = el.dataset.a; renderAdminOverview(); });
-    });
+    })}`;
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
