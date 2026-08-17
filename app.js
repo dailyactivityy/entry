@@ -966,8 +966,13 @@ async function loadAMCustomers() {
   try {
     const { customers } = await api('getGroupCustomersForDate', { branch: amCollState.branch, group: amCollState.group, date: amCollState.date });
     if (!customers.length) { wrap.innerHTML = '<div class="empty-state">No customers in this group</div>'; return; }
-    wrap.innerHTML = `<div class="card">` + customers.map(c => `
-      <div class="cust-row" data-row="${c.collectionRow || ''}" data-cust="${escapeHtml(c.name)}">
+    wrap.innerHTML = `<div class="card">` + customers.map(c => {
+      const emiNum = Number(c.emi);
+      const hasEmi = isFinite(emiNum) && String(c.emi).trim() !== '';
+      const outstanding = Number(c.currentOutstanding) || 0;
+      const prefill = hasEmi ? Math.max(0, Math.min(emiNum, outstanding)) : '';
+      return `
+      <div class="cust-row" data-id="${escapeHtml(c.customerId || '')}" data-row="${c.collectionRow || ''}" data-cust="${escapeHtml(c.name)}">
         <div class="cust-info">
           <div class="cust-name">${escapeHtml(c.name)}</div>
           <div class="cust-sub">${escapeHtml(c.husbandName || '')}${c.phNo ? ' · ' + escapeHtml(String(c.phNo)) : ''} · Loan ${money(c.loanAmt)} · EMI ${escapeHtml(String(c.emi))}</div>
@@ -975,34 +980,31 @@ async function loadAMCustomers() {
         </div>
         <div class="cust-action">
           ${c.collectionRow
-            ? `<input type="number" min="0" class="amEditInput" value="${c.collectedAmt}" style="width:100px; padding:9px 10px; border:1.5px solid var(--line); border-radius:8px;" />
-               <button class="btn-submit-row amEditBtn">Save</button>
-               <button class="btn-ghost amDeleteBtn" style="color:#D64545; border-color:var(--line);">Delete</button>`
-            : `<span class="muted">Not collected</span>`}
+            ? `<span class="badge-done">Submitted ✓ (${money(c.collectedAmt)})</span>`
+            : `<input type="number" min="0" placeholder="Amt" class="putAmtInput" value="${prefill}" />
+               <button class="btn-submit-row">Submit</button>`}
         </div>
-      </div>`).join('') + `</div>`;
+      </div>`;
+    }).join('') + `</div>`;
 
     wrap.querySelectorAll('.cust-row').forEach(row => {
-      const rowNum = row.dataset.row;
-      if (!rowNum) return;
-      row.querySelector('.amEditBtn').addEventListener('click', async () => {
-        const input = row.querySelector('.amEditInput');
+      const btn = row.querySelector('.btn-submit-row');
+      if (!btn) return;
+      const id = row.dataset.id;
+      const input = row.querySelector('.putAmtInput');
+      btn.addEventListener('click', async () => {
         const amt = Number(input.value);
-        if (input.value === '' || isNaN(amt) || amt < 0) { toast('Please enter a valid amount', true); return; }
+        if (input.value === '' || isNaN(amt) || amt < 0) { toast('Please enter a valid amount (0 or more)', true); return; }
+        btn.disabled = true; btn.textContent = '...';
         try {
-          await api('updateCollection', { row: Number(rowNum), newAmt: amt });
-          toast('Collection updated');
-          loadAMCustomers();
-        } catch (err) { toast(err.message, true); }
-      });
-      row.querySelector('.amDeleteBtn').addEventListener('click', async () => {
-        const ok = confirm(`Delete this collection for ${row.dataset.cust}? Outstanding will be restored.`);
-        if (!ok) return;
-        try {
-          await api('deleteCollection', { row: Number(rowNum) });
-          toast('Collection deleted, outstanding restored');
-          loadAMCustomers();
-        } catch (err) { toast(err.message, true); }
+          const data = await api('submitCollection', { customerId: id, putAmt: amt });
+          row.querySelector('.cust-outstanding').innerHTML = `Outstanding: <b>${money(data.newOutstanding)}</b>`;
+          row.querySelector('.cust-action').innerHTML = `<span class="badge-done">Submitted ✓ (${money(amt)})</span>`;
+          toast('Collection submitted');
+        } catch (err) {
+          toast(err.message, true);
+          btn.disabled = false; btn.textContent = 'Submit';
+        }
       });
     });
   } catch (err) {
