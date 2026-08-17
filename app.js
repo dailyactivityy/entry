@@ -43,17 +43,11 @@ async function api(action, payload = {}) {
   return data;
 }
 
-// ---- Shared session cache -------------------------------------------------
-// Data that doesn't change on every click (allowed branches, this staff's own
-// branch dataset, group lists) is fetched from the server ONCE per session and
-// then reused everywhere. After that, switching a dropdown / tab just filters
-// what's already in memory - like a VLOOKUP against a table you already loaded,
-// instead of re-opening the sheet on every click.
 const CACHE = {
-  allowedBranches: null,   // list of branches this staff/AM/Admin can see
-  ownBranchData: null,     // every active customer in the logged-in staff's own branch
-  ownGroupPairs: null,     // {day, groupName} pairs for the own branch (includes empty groups)
-  groupsByBranch: {}       // branch -> groups[], used by AM/Admin flows that pick a branch first
+  allowedBranches: null,
+  ownBranchData: null,
+  ownGroupPairs: null,
+  groupsByBranch: {}
 };
 
 function clearSessionCache() {
@@ -237,7 +231,7 @@ function boot() {
   if (BRANCH_ROLES.includes(role)) {
     tabs = [['summary', 'Summary'], ['collection', 'Collection'], ['dailysheet', 'Dailysheet'], ['disburse', 'Loan Disbursed'],
        ['attendance', 'Attendance'], ['expense', 'Expense'], ['creategroup', 'Create Group'], ['transaction', 'Transaction'],
-       ['history', 'History'], ['report', 'Report']];
+       ['report', 'Report']];
   } else if (role === AREA_ROLE) {
     tabs = [['areaOverview', 'Overview'], ['amCollection', 'Collection'], ['amDailysheet', 'Dailysheet'],
        ['amDisburse', 'Loan Disbursed'], ['amTransaction', 'Transaction'], ['report', 'Report']];
@@ -275,7 +269,6 @@ function render() {
   else if (activeTab === 'expense') renderExpense();
   else if (activeTab === 'creategroup') renderCreateGroup();
   else if (activeTab === 'transaction') renderTransaction();
-  else if (activeTab === 'history') renderHistory();
   else if (activeTab === 'areaOverview') renderAreaOverview();
   else if (activeTab === 'amCollection') renderAMCollection();
   else if (activeTab === 'amDailysheet') renderAMDailySheet();
@@ -292,9 +285,6 @@ function render() {
 
 const WEEK_ORDER_ = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// collState.all holds EVERY active customer for this staff's branch (one server call).
-// Day/Group selection after that is pure in-memory filtering - no network round trip,
-// same idea as an Excel VLOOKUP against a table already loaded in memory.
 let collState = { all: null, day: null, group: null };
 
 async function renderCollection() {
@@ -331,7 +321,6 @@ async function renderCollection() {
   }
 }
 
-// Instant: filters the already-loaded dataset, no api() call.
 function renderGroupOptions_() {
   const groups = [...new Set(collState.all.filter(c => c.day === collState.day).map(c => c.groupName))]
     .filter(Boolean).sort();
@@ -346,7 +335,6 @@ function renderGroupOptions_() {
   else document.getElementById('custList').innerHTML = '';
 }
 
-// Instant: filters the already-loaded dataset, no api() call.
 function renderCustomersForGroup_() {
   const wrap = document.getElementById('custList');
   const customers = collState.all.filter(c => c.day === collState.day && c.groupName === collState.group);
@@ -402,8 +390,6 @@ function renderCustomersForGroup_() {
       const rec = collState.all.find(c => c.customerId === id);
       if (rec) { rec.collectedToday = true; rec.collectedAmt = amt; rec.currentOutstanding = data.newOutstanding; }
       toast('Collection submitted');
-      // re-render: refreshes the running total and auto-focuses the next open
-      // amount box, so typing amount -> Enter -> typing amount -> Enter just flows
       renderCustomersForGroup_();
     }).catch(err => {
       toast(err.message, true);
@@ -421,7 +407,6 @@ function renderCustomersForGroup_() {
     });
   });
 
-  // land the cursor straight in the first open amount box - no tapping needed to start
   const firstOpenInput = wrap.querySelector('.cust-row .putAmtInput');
   if (firstOpenInput) firstOpenInput.focus();
 }
@@ -562,7 +547,7 @@ async function renderDisburse() {
       document.getElementById('d_outstanding_display').value = '';
       document.getElementById('d_emi_display').value = '';
       document.getElementById('d_lastemi_note').textContent = '';
-      CACHE.ownBranchData = null; // new customer added - refresh cached branch data next time it's needed
+      CACHE.ownBranchData = null;
       await getOwnGroupPairsCached(true);
       loadGroupsForDay();
     } catch (err) {
@@ -576,8 +561,6 @@ async function loadGroupsForDay() {
   const day = val('d_day');
   const sel = document.getElementById('d_group');
   try {
-    // First call this session fetches once and caches; every Day change after
-    // that is an instant in-memory filter, no server round trip.
     const pairs = await getOwnGroupPairsCached();
     const groups = [...new Set(pairs.filter(p => p.day === day).map(p => p.groupName))].sort();
     if (sel) sel.innerHTML = `<option value="">-- Select Group --</option>` + groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
@@ -823,95 +806,12 @@ async function renderCreateGroup() {
       await api('createGroup', { day: val('cg_day'), groupName: val('cg_name'), address: val('cg_address') });
       toast('Group created successfully');
       e.target.reset();
-      await getOwnGroupPairsCached(true); // refresh so the new group shows up instantly elsewhere
+      await getOwnGroupPairsCached(true);
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
     }
   });
-}
-
-async function renderHistory() {
-  const main = document.getElementById('mainContent');
-  main.innerHTML = `
-  <div class="card">
-    <h3>Repayment History</h3>
-    <div class="field"><label>Search by Name / Phone / Customer ID</label><input id="h_search" placeholder="Type to search..." /></div>
-  </div>
-  <div class="card">
-    <h3>Or Browse by Group</h3>
-    <div class="field"><label>Group</label><select id="h_group"><option value="">-- Select Group --</option></select></div>
-  </div>
-  <div id="historyResults"></div>`;
-
-  let ownData = [];
-  try {
-    ownData = await getOwnBranchDataCached();
-    const groups = [...new Set(ownData.map(c => c.groupName))].filter(Boolean).sort();
-    document.getElementById('h_group').innerHTML = `<option value="">-- Select Group --</option>` +
-      groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
-  } catch (err) { /* ignore - search still works */ }
-
-  // Search still needs the server (it also covers Closed customers, which the
-  // cached active-only dataset doesn't include), but Group browsing is instant.
-  let searchTimer = null;
-  document.getElementById('h_search').addEventListener('input', (e) => {
-    clearTimeout(searchTimer);
-    const q = e.target.value.trim();
-    if (!q) { document.getElementById('historyResults').innerHTML = ''; return; }
-    searchTimer = setTimeout(async () => {
-      try {
-        const { customers } = await api('searchCustomers', { query: q });
-        renderHistoryCustomerList(customers);
-      } catch (err) { toast(err.message, true); }
-    }, 300);
-  });
-
-  document.getElementById('h_group').addEventListener('change', (e) => {
-    if (!e.target.value) { document.getElementById('historyResults').innerHTML = ''; return; }
-    const customers = ownData.filter(c => c.groupName === e.target.value).map(c => ({
-      customerId: c.customerId, name: c.name, phNo: c.phNo, groupName: c.groupName,
-      status: 'Active', currentOutstanding: c.currentOutstanding
-    }));
-    renderHistoryCustomerList(customers);
-  });
-}
-
-function renderHistoryCustomerList(customers) {
-  const wrap = document.getElementById('historyResults');
-  if (!customers.length) { wrap.innerHTML = '<div class="empty-state">No customers found</div>'; return; }
-  wrap.innerHTML = `<div class="card">${customers.map(c => `
-    <div class="cust-row" data-id="${escapeHtml(c.customerId)}" style="cursor:pointer;">
-      <div class="cust-info">
-        <div class="cust-name">${escapeHtml(c.name)} ${c.status === 'Closed' ? '<span class="muted">(Closed)</span>' : ''}</div>
-        <div class="cust-sub">${escapeHtml(c.phNo || '')} · ${escapeHtml(c.groupName || '')}</div>
-      </div>
-      <div class="cust-action"><span class="muted">Outstanding: ${money(c.currentOutstanding)}</span></div>
-    </div>`).join('')}</div>`;
-  wrap.querySelectorAll('.cust-row').forEach(row => {
-    row.addEventListener('click', () => openRepaymentHistoryPopup(row.dataset.id));
-  });
-}
-
-async function openRepaymentHistoryPopup(customerId) {
-  showPopup('Repayment History', '<p class="muted">Loading...</p>');
-  try {
-    const { customer: c, status, history } = await api('getCustomerRepaymentHistory', { customerId });
-    const totalPaid = history.reduce((s, r) => s + (Number(r.putAmt) || 0), 0);
-    const body = `
-      <div class="stat-grid" style="margin-bottom:16px;">
-        <div class="stat-card"><div class="label">Loan Amt</div><div class="value">${money(c.LoanAmt)}</div></div>
-        <div class="stat-card"><div class="label">Outstanding</div><div class="value">${money(c.CurrentOutstanding)}</div></div>
-        <div class="stat-card"><div class="label">Total Paid</div><div class="value green">${money(totalPaid)}</div></div>
-        <div class="stat-card"><div class="label">Payments Made</div><div class="value">${history.length}</div></div>
-      </div>
-      ${history.length ? `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Staff</th><th>Outstanding After</th></tr></thead><tbody>
-        ${history.map(r => `<tr><td>${fmtDate(r.timestamp)}</td><td>${money(r.putAmt)}</td><td>${escapeHtml(r.staffName)}</td><td>${money(r.outstandingAfter)}</td></tr>`).join('')}
-      </tbody></table></div>` : '<div class="empty-state">No payments recorded yet</div>'}`;
-    showPopup(`Repayment History - ${escapeHtml(c.CustomerName)} ${status === 'Closed' ? '(Closed)' : ''}`, body);
-  } catch (err) {
-    showPopup('Repayment History', `<p class="error">${err.message}</p>`);
-  }
 }
 
 async function renderTransaction() {
@@ -1300,7 +1200,7 @@ async function openCustomerDetailsPopup(customerId) {
           ACNo: val('ce_ac'), IFSCCode: val('ce_ifsc')
         });
         toast('Customer details updated');
-        CACHE.ownBranchData = null; // details (day/group/outstanding) may have changed
+        CACHE.ownBranchData = null;
         const popup = document.getElementById('genericPopup');
         if (popup) popup.remove();
       } catch (err) {
@@ -1609,19 +1509,22 @@ async function renderHOOverview() {
 
 function renderReport() {
   const main = document.getElementById('mainContent');
+  const isBranch = BRANCH_ROLES.includes(normRole(SESSION.role));
   main.innerHTML = `
   <div class="card">
     <h3>Report</h3>
     <div class="report-menu">
-      <button class="btn-ghost report-menu-btn" id="rm_loandisb">Loan Disb</button>
+      ${isBranch ? '' : `<button class="btn-ghost report-menu-btn" id="rm_loandisb">Loan Disb</button>
       <button class="btn-ghost report-menu-btn" id="rm_collection">Collection</button>
-      <button class="btn-ghost report-menu-btn" id="rm_outstanding">Outstanding</button>
+      <button class="btn-ghost report-menu-btn" id="rm_outstanding">Outstanding</button>`}
       <button class="btn-ghost report-menu-btn" id="rm_night">Night Report</button>
     </div>
   </div>`;
-  document.getElementById('rm_loandisb').addEventListener('click', renderLoanDisbReport);
-  document.getElementById('rm_collection').addEventListener('click', renderCollectionReport);
-  document.getElementById('rm_outstanding').addEventListener('click', renderOutstandingReport);
+  if (!isBranch) {
+    document.getElementById('rm_loandisb').addEventListener('click', renderLoanDisbReport);
+    document.getElementById('rm_collection').addEventListener('click', renderCollectionReport);
+    document.getElementById('rm_outstanding').addEventListener('click', renderOutstandingReport);
+  }
   document.getElementById('rm_night').addEventListener('click', renderSimpleNightReport);
 }
 
