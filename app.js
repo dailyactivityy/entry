@@ -482,8 +482,8 @@ async function renderDisburse() {
       </div>
       <div class="field-row-wide">
         <div class="field"><label>Customer Name</label><input id="d_name" required /></div>
-        <div class="field"><label>Husband Name</label><input id="d_husband" /></div>
-        <div class="field"><label>Phone No</label><input id="d_phone" /></div>
+        <div class="field"><label>Husband Name</label><input id="d_husband" required /></div>
+        <div class="field"><label>Phone No</label><input id="d_phone" required /></div>
       </div>
       <div class="field-row-wide">
         <div class="field"><label>Loan Amt</label>
@@ -494,10 +494,10 @@ async function renderDisburse() {
       </div>
       <div class="field"><label class="muted" style="display:block; margin-bottom:12px;" id="d_lastemi_note"></label></div>
       <div class="field-row-wide">
-        <div class="field"><label>Aadhar No</label><input id="d_aadhar" /></div>
-        <div class="field"><label>Pan No</label><input id="d_pan" /></div>
-        <div class="field"><label>A/C No</label><input id="d_ac" /></div>
-        <div class="field"><label>IFSC Code</label><input id="d_ifsc" /></div>
+        <div class="field"><label>Aadhar No</label><input id="d_aadhar" required /></div>
+        <div class="field"><label>Pan No</label><input id="d_pan" required /></div>
+        <div class="field"><label>A/C No</label><input id="d_ac" required /></div>
+        <div class="field"><label>IFSC Code</label><input id="d_ifsc" required /></div>
       </div>
       <button class="btn-primary" type="submit">Disburse Loan</button>
       <p id="disburseError" class="error hidden"></p>
@@ -540,6 +540,15 @@ async function renderDisburse() {
     };
     if (!payload.groupName) { errEl.textContent = 'Please select a group'; errEl.classList.remove('hidden'); return; }
     if (!payload.loanAmt) { errEl.textContent = 'Please select a loan amount'; errEl.classList.remove('hidden'); return; }
+    if (!payload.customerName || !payload.husbandName || !payload.phNo ||
+        !payload.aadharNo || !payload.panNo || !payload.acNo || !payload.ifscCode) {
+      errEl.textContent = 'Please fill in all fields before submitting';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
     try {
       await api('addDisbursement', payload);
       toast('Loan disbursed successfully');
@@ -553,6 +562,9 @@ async function renderDisburse() {
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Disburse Loan';
     }
   });
 }
