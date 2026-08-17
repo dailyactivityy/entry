@@ -1,5 +1,3 @@
-
-
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycby3evz5ec4qSyJtByXHMkyte0C_YnGAPkWiifT-sjb9Q7TVBfc3SjsBorbAocsb3krC/exec'
 };
@@ -193,7 +191,7 @@ function boot() {
     tabs = [['areaOverview', 'Overview'], ['amCollection', 'Collection'], ['amDailysheet', 'Dailysheet'],
        ['amDisburse', 'Loan Disbursed'], ['amTransaction', 'Transaction'], ['report', 'Report']];
   } else if (role === 'ADMIN') {
-    tabs = [['adminOverview', 'Overview'], ['staff', 'Staff'], ['logs', 'Logs'], ['report', 'Report']];
+    tabs = [['adminOverview', 'Overview'], ['staff', 'Staff'], ['attendanceRegister', 'Attendance'], ['logs', 'Logs'], ['report', 'Report']];
   } else if (role === 'HO') {
     tabs = [['hoOverview', 'Overview'], ['hoReport', 'Report']];
   } else {
@@ -236,6 +234,7 @@ function render() {
   else if (activeTab === 'hoOverview') renderHOOverview();
   else if (activeTab === 'hoReport') renderReport();
   else if (activeTab === 'staff') renderStaff();
+  else if (activeTab === 'attendanceRegister') renderAttendanceRegister();
   else if (activeTab === 'logs') renderLogs();
   else if (activeTab === 'report') renderReport();
 }
@@ -541,57 +540,97 @@ async function renderBranchSummary() {
   }
 }
 
+function getGeoLocation_() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('Location not supported on this device')); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => reject(new Error('Could not get your location. Please allow location access.')),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  });
+}
+
 async function renderAttendance() {
   const main = document.getElementById('mainContent');
   main.innerHTML = `
   <div class="card">
-    <h3>Attendance</h3>
-    <div class="field"><label>Date</label><input type="date" id="att_date" /></div>
-  </div>
-  <div id="att_list"><p class="muted">Loading...</p></div>`;
+    <h3>My Attendance</h3>
+    <p class="muted" id="myAttStatus">Loading...</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+      <button class="btn-primary" type="button" id="btnCheckIn" style="max-width:160px; margin-top:0;">Check In</button>
+      <button class="btn-primary" type="button" id="btnCheckOut" style="max-width:160px; margin-top:0;">Check Out</button>
+      <button class="btn-ghost" type="button" id="btnSetLocation">Set Branch Location</button>
+    </div>
+  </div>`;
 
-  const dateInput = document.getElementById('att_date');
-  dateInput.value = new Date().toISOString().slice(0, 10);
-
-  async function loadAttendance() {
-    const listEl = document.getElementById('att_list');
-    listEl.innerHTML = '<p class="muted">Loading...</p>';
+  async function refreshMyStatus() {
+    const dateStr = new Date().toISOString().slice(0, 10);
     try {
-      const { staff, dateStr } = await api('getAttendance', { date: dateInput.value });
-      if (!staff.length) { listEl.innerHTML = '<div class="empty-state">No staff found for this branch</div>'; return; }
-      listEl.innerHTML = `<div class="card"><div class="table-wrap"><table><thead><tr><th>Staff</th><th>Role</th><th>Status</th></tr></thead><tbody>
-        ${staff.map(s => `<tr>
-          <td>${escapeHtml(s.name)}</td>
-          <td>${escapeHtml(s.role)}</td>
-          <td>
-            <button class="btn-ghost attBtn ${s.status === 'Present' ? 'active-present' : ''}" data-phone="${s.phone}" data-name="${escapeHtml(s.name)}" data-status="Present" style="${s.status === 'Present' ? 'background:#1F4A3D;color:#fff;' : ''}">Present</button>
-            <button class="btn-ghost attBtn ${s.status === 'Absent' ? 'active-absent' : ''}" data-phone="${s.phone}" data-name="${escapeHtml(s.name)}" data-status="Absent" style="${s.status === 'Absent' ? 'background:#B3261E;color:#fff;' : ''}">Absent</button>
-          </td>
-        </tr>`).join('')}
-      </tbody></table></div></div>`;
-
-      document.querySelectorAll('.attBtn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          btn.disabled = true;
-          try {
-            await api('markAttendance', {
-              date: dateInput.value, staffPhone: btn.dataset.phone, staffName: btn.dataset.name, status: btn.dataset.status
-            });
-            toast(`Marked ${btn.dataset.name} as ${btn.dataset.status}`);
-            loadAttendance();
-          } catch (err) {
-            toast(err.message, true);
-            btn.disabled = false;
-          }
-        });
-      });
-    } catch (err) {
-      listEl.innerHTML = `<p class="error">${err.message}</p>`;
-    }
+      const { staff } = await api('getAttendance', { date: dateStr });
+      const mine = (staff || []).find(s => s.phone === SESSION.phone);
+      let txt = 'Not checked in yet today';
+      if (mine && mine.checkInTime) {
+        txt = `Checked in ${mine.checkInTime}` + (mine.checkOutTime ? `, checked out ${mine.checkOutTime}` : '') + ` — ${mine.status}`;
+      }
+      document.getElementById('myAttStatus').textContent = txt;
+    } catch (e) {}
   }
+  refreshMyStatus();
 
-  dateInput.addEventListener('change', loadAttendance);
-  loadAttendance();
+  async function refreshLocationButton() {
+    const btn = document.getElementById('btnSetLocation');
+    try {
+      const { set } = await api('getBranchLocation');
+      if (set) { btn.disabled = true; btn.textContent = 'Branch Location Already Set'; }
+    } catch (e) {}
+  }
+  refreshLocationButton();
+
+  document.getElementById('btnSetLocation').addEventListener('click', async () => {
+    const btn = document.getElementById('btnSetLocation');
+    btn.disabled = true; btn.textContent = 'Getting location...';
+    try {
+      const { latitude, longitude } = await getGeoLocation_();
+      window.open(`https://www.google.com/maps?q=${latitude},${longitude}`, '_blank');
+      await api('setBranchLocation', { latitude, longitude });
+      toast('Branch location saved');
+      btn.textContent = 'Branch Location Already Set';
+    } catch (err) {
+      toast(err.message, true);
+      btn.disabled = false; btn.textContent = 'Set Branch Location';
+    }
+  });
+
+  document.getElementById('btnCheckIn').addEventListener('click', async () => {
+    const btn = document.getElementById('btnCheckIn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    try {
+      const { latitude, longitude } = await getGeoLocation_();
+      const res = await api('checkIn', { latitude, longitude });
+      toast(`Checked in at ${res.checkInTime}${res.onTime ? '' : ' (late)'}`);
+      refreshMyStatus();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Check In';
+    }
+  });
+
+  document.getElementById('btnCheckOut').addEventListener('click', async () => {
+    const btn = document.getElementById('btnCheckOut');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    try {
+      const { latitude, longitude } = await getGeoLocation_();
+      const res = await api('checkOut', { latitude, longitude });
+      toast(`Checked out at ${res.checkOutTime}`);
+      refreshMyStatus();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Check Out';
+    }
+  });
 }
 
 async function renderExpense() {
@@ -1301,6 +1340,95 @@ async function renderAdminOverview() {
   } catch (err) {
     main.innerHTML = `<p class="error">${err.message}</p>`;
   }
+}
+
+async function renderAttendanceRegister() {
+  const main = document.getElementById('mainContent');
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = today.slice(0, 8) + '01';
+  main.innerHTML = `
+  <div class="card">
+    <h3>Branch Locations</h3>
+    <div id="branchLocList"><p class="muted">Loading...</p></div>
+  </div>
+  <div class="card">
+    <h3>Attendance Register</h3>
+    <div class="field-row">
+      <div class="field"><label>From</label><input type="date" id="ar_from" value="${monthStart}" /></div>
+      <div class="field"><label>To</label><input type="date" id="ar_to" value="${today}" /></div>
+    </div>
+    <button class="btn-primary" type="button" id="ar_go" style="max-width:160px;">Load</button>
+    <p id="ar_error" class="error hidden"></p>
+  </div>
+  <div id="ar_results"></div>`;
+
+  async function loadLocations() {
+    const locEl = document.getElementById('branchLocList');
+    locEl.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      const { locations } = await api('getBranchLocations');
+      if (!locations.length) {
+        locEl.innerHTML = '<div class="empty-state">No branch locations set yet</div>';
+        return;
+      }
+      locEl.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Branch</th><th>Location</th><th>Set By</th><th></th></tr></thead><tbody>
+        ${locations.map(l => `<tr>
+          <td>${escapeHtml(l.branch)}</td>
+          <td><a href="https://www.google.com/maps?q=${l.latitude},${l.longitude}" target="_blank">${l.latitude.toFixed(5)}, ${l.longitude.toFixed(5)}</a></td>
+          <td>${escapeHtml(l.setBy || '')}</td>
+          <td><button class="btn-ghost resetLocBtn" data-branch="${escapeHtml(l.branch)}" style="color:#B3261E;">Reset</button></td>
+        </tr>`).join('')}
+      </tbody></table></div>`;
+      document.querySelectorAll('.resetLocBtn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ok = confirm(`Reset location for ${btn.dataset.branch}? Staff will be able to set it again.`);
+          if (!ok) return;
+          btn.disabled = true;
+          try {
+            await api('resetBranchLocation', { branch: btn.dataset.branch });
+            toast('Location reset');
+            loadLocations();
+          } catch (err) {
+            toast(err.message, true);
+            btn.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      locEl.innerHTML = `<p class="error">${err.message}</p>`;
+    }
+  }
+  loadLocations();
+
+  document.getElementById('ar_go').addEventListener('click', async () => {
+    const errEl = document.getElementById('ar_error');
+    errEl.classList.add('hidden');
+    const results = document.getElementById('ar_results');
+    results.innerHTML = '<p class="muted">Loading...</p>';
+    try {
+      const fromDate = document.getElementById('ar_from').value;
+      const toDate = document.getElementById('ar_to').value;
+      const { dates, rows } = await api('getAttendanceRegister', { fromDate, toDate });
+      if (!rows.length) { results.innerHTML = '<div class="empty-state">No staff found</div>'; return; }
+      const statusLetter = { Full: 'F', Half: 'H', Absent: 'A', Present: 'F' };
+      results.innerHTML = `<div class="card"><div class="table-wrap"><table><thead><tr>
+        <th>Staff</th><th>Branch</th>
+        ${dates.map(d => `<th>${d.slice(8, 10)}</th>`).join('')}
+        <th>Full</th><th>Half</th><th>Absent</th>
+      </tr></thead><tbody>
+        ${rows.map(r => `<tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${escapeHtml(r.branch)}</td>
+          ${dates.map(d => `<td>${statusLetter[r.byDate[d]] || 'A'}</td>`).join('')}
+          <td><b>${r.fullCount}</b></td><td>${r.halfCount}</td><td>${r.absentCount}</td>
+        </tr>`).join('')}
+      </tbody></table></div></div>`;
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
+      results.innerHTML = '';
+    }
+  });
 }
 
 async function renderStaff() {
