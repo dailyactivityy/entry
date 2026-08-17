@@ -1429,7 +1429,11 @@ async function renderStaff() {
       <p id="staffError" class="error hidden"></p>
     </form>
   </div>
-  <div class="card"><h3>All Staff</h3><div id="staffListWrap"><p class="muted">Loading...</p></div></div>`;
+  <div class="card">
+    <h3>Search Staff</h3>
+    <div class="field"><label>Phone or Name</label><input id="s_search" placeholder="Type to search..." /></div>
+    <div id="staffListWrap"></div>
+  </div>`;
 
   function updateStaffFieldVisibility() {
     const role = val('s_role');
@@ -1451,19 +1455,27 @@ async function renderStaff() {
       toast('Staff added - default password is "Sampoorn"');
       e.target.reset();
       updateStaffFieldVisibility();
-      loadStaffList();
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
     }
   });
-  loadStaffList();
+
+  let staffSearchTimer = null;
+  document.getElementById('s_search').addEventListener('input', (e) => {
+    clearTimeout(staffSearchTimer);
+    const q = e.target.value.trim();
+    if (!q) { document.getElementById('staffListWrap').innerHTML = ''; return; }
+    staffSearchTimer = setTimeout(() => searchStaffAndRender(q), 300);
+  });
 }
 
-async function loadStaffList() {
+async function searchStaffAndRender(query) {
   const wrap = document.getElementById('staffListWrap');
+  wrap.innerHTML = '<p class="muted">Searching...</p>';
   try {
-    const { staff } = await api('getStaffList');
+    const { staff } = await api('searchStaff', { query });
+    if (!staff.length) { wrap.innerHTML = '<div class="empty-state">No staff found</div>'; return; }
     wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Branch/Area</th><th></th></tr></thead><tbody>
       ${staff.map(s => `<tr>
         <td>${escapeHtml(s.name)}</td><td>${escapeHtml(String(s.phone))}</td><td>${escapeHtml(ROLE_LABELS[normRole(s.role)] || s.role)}</td>
@@ -1476,6 +1488,7 @@ async function loadStaffList() {
         try {
           await api('resetStaffPassword', { phone: b.dataset.p });
           toast('Password reset to "Sampoorn"');
+          searchStaffAndRender(query);
         } catch (err) { toast(err.message, true); }
       });
     });
@@ -1934,34 +1947,73 @@ async function renderSimpleNightReport() {
   });
 }
 
+let logsState = { branch: '', group: '' };
+
 async function renderLogs() {
   const main = document.getElementById('mainContent');
-  try {
-    const { collections, disbursements } = await api('getLogs');
-    main.innerHTML = `
-    <div class="card"><h3>Recent Collections (last 200)</h3>
-      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th><th>Staff</th><th></th></tr></thead><tbody>
-        ${collections.map(r => `<tr><td>${fmtDate(r.Timestamp)}</td><td>${escapeHtml(r.Branch)}</td><td>${escapeHtml(r.CustomerName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td><td><button class="btn-ghost deleteCollBtn" data-row="${r._row}" data-amt="${money(r.PutAmt)}" data-cust="${escapeHtml(r.CustomerName)}" style="color:#B3261E;border-color:#E4E9ED;">Delete</button></td></tr>`).join('')}
-      </tbody></table></div>
+  main.innerHTML = `
+  <div class="card">
+    <h3>Logs</h3>
+    <div class="field-row">
+      <div class="field"><label>Branch</label><select id="lg_branch"><option value="">-- Select Branch --</option></select></div>
+      <div class="field"><label>Group</label><select id="lg_group"><option value="">-- All Groups --</option></select></div>
     </div>
-    <div class="card"><h3>Recent Disbursements (last 200)</h3>
-      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th></tr></thead><tbody>
+    <button class="btn-primary" type="button" id="lg_load" style="max-width:160px;">Load</button>
+  </div>
+  <div id="lg_results"></div>`;
+
+  try {
+    const branches = await getAllowedBranchesCached();
+    document.getElementById('lg_branch').innerHTML = `<option value="">-- Select Branch --</option>` +
+      branches.map(b => `<option value="${escapeHtml(b)}" ${b === logsState.branch ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('');
+  } catch (err) { toast(err.message, true); }
+
+  document.getElementById('lg_branch').addEventListener('change', async (e) => {
+    logsState.branch = e.target.value;
+    logsState.group = '';
+    const groupSel = document.getElementById('lg_group');
+    groupSel.innerHTML = `<option value="">-- All Groups --</option>`;
+    if (!logsState.branch) return;
+    try {
+      const groups = await getGroupsForBranchCached(logsState.branch);
+      groupSel.innerHTML = `<option value="">-- All Groups --</option>` +
+        groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+    } catch (err) { toast(err.message, true); }
+  });
+  document.getElementById('lg_group').addEventListener('change', (e) => { logsState.group = e.target.value; });
+  document.getElementById('lg_load').addEventListener('click', loadLogsResults);
+}
+
+async function loadLogsResults() {
+  const wrap = document.getElementById('lg_results');
+  if (!logsState.branch) { toast('Please select a branch', true); return; }
+  wrap.innerHTML = '<p class="muted">Loading...</p>';
+  try {
+    const { collections, disbursements } = await api('getLogs', { branch: logsState.branch, group: logsState.group });
+    wrap.innerHTML = `
+    <div class="card"><h3>Recent Collections</h3>
+      ${collections.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th><th>Staff</th><th></th></tr></thead><tbody>
+        ${collections.map(r => `<tr><td>${fmtDate(r.Timestamp)}</td><td>${escapeHtml(r.Branch)}</td><td>${escapeHtml(r.CustomerName)}</td><td>${money(r.PutAmt)}</td><td>${escapeHtml(r.StaffName)}</td><td><button class="btn-ghost deleteCollBtn" data-row="${r._row}" data-amt="${money(r.PutAmt)}" data-cust="${escapeHtml(r.CustomerName)}" style="color:#B3261E;border-color:#E4E9ED;">Delete</button></td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty-state">No collections found</div>'}
+    </div>
+    <div class="card"><h3>Recent Disbursements</h3>
+      ${disbursements.length ? `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Branch</th><th>Customer</th><th>Amt</th></tr></thead><tbody>
         ${disbursements.map(r => `<tr><td>${fmtDate(r.Timestamp)}</td><td>${escapeHtml(r.Branch)}</td><td>${escapeHtml(r.CustomerName)}</td><td>${money(r.LoanAmt)}</td></tr>`).join('')}
-      </tbody></table></div>
+      </tbody></table></div>` : '<div class="empty-state">No disbursements found</div>'}
     </div>`;
-    main.querySelectorAll('.deleteCollBtn').forEach(b => {
+    wrap.querySelectorAll('.deleteCollBtn').forEach(b => {
       b.addEventListener('click', async () => {
         const ok = confirm(`Delete this collection of ${b.dataset.amt} for ${b.dataset.cust}?\nThis will add the amount back to their outstanding balance.`);
         if (!ok) return;
         try {
           await api('deleteCollection', { row: Number(b.dataset.row) });
           toast('Collection deleted, outstanding restored');
-          renderLogs();
+          loadLogsResults();
         } catch (err) { toast(err.message, true); }
       });
     });
   } catch (err) {
-    main.innerHTML = `<p class="error">${err.message}</p>`;
+    wrap.innerHTML = `<p class="error">${err.message}</p>`;
   }
 }
 
