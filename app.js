@@ -2058,7 +2058,7 @@ function escapeHtml(str) {
 }
 
 function fmtDate(d) {
-  try { return new Date(d).toLocaleString('en-IN'); } catch { return String(d); }
+  try { return new Date(d).toLocaleDateString('en-IN'); } catch { return String(d); }
 }
 
 if (SESSION) boot();
