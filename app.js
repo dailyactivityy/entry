@@ -303,7 +303,7 @@ async function renderCollection() {
   try {
     collState.all = await getOwnBranchDataCached();
 
-    const daysPresent = [...new Set(customers.map(c => c.day).filter(Boolean))]
+    const daysPresent = [...new Set(collState.all.map(c => c.day).filter(Boolean))]
       .sort((a, b) => WEEK_ORDER_.indexOf(a) - WEEK_ORDER_.indexOf(b));
     const todayName = WEEK_ORDER_[new Date().getDay()];
     if (!collState.day || daysPresent.indexOf(collState.day) === -1) {
