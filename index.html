@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Branch Operations Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; margin:0; background:#f4f6f9; color:#222; }
+    .hidden { display:none !important; }
+
+    #loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .loginBox { background:#fff; padding:36px 32px; border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.12); width:320px; }
+    .loginBox h2 { margin-top:0; color:#1657c9; text-align:center; }
+    .loginBox input { width:100%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:6px; font-size:14px; }
+    .loginBox button { width:100%; padding:10px; margin-top:10px; background:#1657c9; color:#fff; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
+    .loginBox button:hover { background:#0f47ab; }
+    #loginError { color:#c62828; font-size:13px; min-height:18px; text-align:center; }
+
+    #appHeader { background:#fff; border-bottom:2px solid #1657c9; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; }
+    #appHeader h1 { font-size:19px; margin:0; color:#1657c9; }
+    .badge { background:#1657c9; color:#fff; padding:4px 10px; border-radius:14px; font-size:12px; margin-left:10px; }
+    .headerBtn { background:#fff; border:1px solid #bbb; padding:7px 14px; border-radius:6px; cursor:pointer; margin-left:8px; font-size:13px; }
+    .headerBtn.logout { border-color:#c62828; color:#c62828; }
+    .headerBtn.logout:hover { background:#c62828; color:#fff; }
+
+    #tabBar { background:#fff; display:flex; padding:0 20px; border-bottom:1px solid #ddd; }
+    .tabBtn { padding:12px 18px; cursor:pointer; font-size:14px; color:#555; border-bottom:3px solid transparent; }
+    .tabBtn.active { color:#1657c9; border-bottom-color:#1657c9; font-weight:bold; }
+
+    .page { padding:18px 20px; }
+
+    .filterRow { display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap; background:#fff; padding:16px; border-radius:8px; margin-bottom:16px; }
+    .filterField { display:flex; flex-direction:column; min-width:180px; }
+    .filterField label { font-size:12px; color:#555; margin-bottom:4px; font-weight:bold; }
+    .filterField select, .filterField input { padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
+    .primaryBtn { background:#1657c9; color:#fff; border:none; padding:10px 18px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:bold; }
+    .primaryBtn:hover { background:#0f47ab; }
+    .primaryBtn:disabled { background:#9db6e6; cursor:not-allowed; }
+
+    .tableWrap { background:#fff; border-radius:8px; overflow:auto; max-width:100%; }
+    table.dataTable { border-collapse:collapse; width:100%; min-width:700px; }
+    table.dataTable th, table.dataTable td { padding:10px 12px; border-bottom:1px solid #eee; font-size:13px; white-space:nowrap; text-align:center; }
+    table.dataTable th { background:#f7f9fc; color:#333; position:sticky; top:0; z-index:2; }
+    table.dataTable td.nameCol, table.dataTable th.nameCol {
+      position:sticky; left:0; background:#fff; text-align:left; font-weight:bold; z-index:1; box-shadow:2px 0 4px rgba(0,0,0,.05);
+    }
+    table.dataTable th.nameCol { background:#f7f9fc; z-index:3; }
+    table.dataTable td.putCell input { width:90px; padding:6px; border:1px solid #ccc; border-radius:5px; text-align:center; font-size:13px; }
+    table.dataTable tfoot td { font-weight:bold; background:#fafafa; }
+    .osCell { color:#1657c9; font-weight:bold; }
+    .footerBar { display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
+    .msgOk { color:#1e7e34; font-weight:bold; }
+    .msgErr { color:#c62828; font-weight:bold; }
+
+    .formGrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px; background:#fff; padding:18px; border-radius:8px; }
+    .formGrid .field { display:flex; flex-direction:column; }
+    .formGrid label { font-size:12px; font-weight:bold; color:#555; margin-bottom:4px; }
+    .formGrid input, .formGrid select { padding:9px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
+    .typeToggle { display:flex; gap:10px; margin-bottom:16px; }
+    .typeToggle button { flex:1; padding:10px; border:1px solid #1657c9; background:#fff; color:#1657c9; border-radius:6px; cursor:pointer; font-weight:bold; }
+    .typeToggle button.active { background:#1657c9; color:#fff; }
+
+    .subTabBar { display:flex; gap:6px; margin-bottom:14px; }
+    .subTabBtn { padding:8px 14px; border-radius:6px; background:#e9eef7; color:#1657c9; cursor:pointer; font-size:13px; font-weight:bold; }
+    .subTabBtn.active { background:#1657c9; color:#fff; }
+    .smallBtn { padding:5px 10px; font-size:12px; border-radius:5px; border:1px solid #ccc; background:#fff; cursor:pointer; margin:0 2px;}
+    .smallBtn.edit { color:#1657c9; border-color:#1657c9; }
+    .smallBtn.del { color:#c62828; border-color:#c62828; }
+    .loadingNote { font-size:12px; color:#888; margin-top:6px; }
+  </style>
+</head>
+<body>
+
+  <div id="loginScreen">
+    <div class="loginBox">
+      <h2>Branch Operations Portal</h2>
+      <input type="text" id="loginUser" placeholder="Staff Name" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+      <div id="loginError"></div>
+      <button onclick="doLogin()">LOGIN</button>
+    </div>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div id="appHeader">
+      <h1>Branch Operations Portal <span class="badge" id="userBadge"></span></h1>
+      <div><button class="headerBtn logout" onclick="logoutUser()">Logout</button></div>
+    </div>
+
+    <div id="tabBar">
+      <div class="tabBtn active" data-tab="collection" onclick="switchTab('collection')">Collection Entry</div>
+      <div class="tabBtn" data-tab="disbursal" onclick="switchTab('disbursal')">Loan Disbursal</div>
+      <div class="tabBtn hidden" id="adminTabBtn" data-tab="admin" onclick="switchTab('admin')">Admin Panel</div>
+    </div>
+
+    <!-- ===== COLLECTION ENTRY ===== -->
+    <div class="page" id="page-collection">
+      <div class="filterRow">
+        <div class="filterField">
+          <label>Branch Name</label>
+          <select id="colBranch" onchange="onCollectionBranchChange()"></select>
+        </div>
+        <div class="filterField">
+          <label>Select Day</label>
+          <select id="colDay" onchange="onCollectionDayChange()"></select>
+        </div>
+        <div class="filterField">
+          <label>Select Group</label>
+          <select id="colGroup"></select>
+        </div>
+        <button class="primaryBtn" onclick="loadCustomers()">LOAD CUSTOMERS</button>
+      </div>
+      <div class="loadingNote" id="branchLoadNote"></div>
+
+      <div class="tableWrap">
+        <table class="dataTable" id="collectionTable">
+          <thead>
+            <tr>
+              <th class="nameCol">Customer Name</th>
+              <th>Husband Name</th>
+              <th>Ph No</th>
+              <th>Current O/S</th>
+              <th>EMI Amt</th>
+              <th>Put Amount</th>
+              <th>New O/S</th>
+            </tr>
+          </thead>
+          <tbody id="collectionBody"></tbody>
+          <tfoot>
+            <tr>
+              <td class="nameCol">TOTAL</td>
+              <td></td><td></td>
+              <td id="totOS">0</td>
+              <td id="totEmi">0</td>
+              <td id="totPut">0</td>
+              <td id="totNewOS">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="footerBar">
+        <div>Total Customers: <b id="custCount">0</b> &nbsp; <span id="colMsg"></span></div>
+        <button class="primaryBtn" id="submitColBtn" onclick="submitCollectionEntry()">SUBMIT COLLECTION</button>
+      </div>
+    </div>
+
+    <!-- ===== LOAN DISBURSAL ===== -->
+    <div class="page hidden" id="page-disbursal">
+      <div class="typeToggle">
+        <button id="typeNewBtn" class="active" onclick="setDisbType('New')">New Customer</button>
+        <button id="typeExistingBtn" onclick="setDisbType('Existing')">Existing Customer</button>
+      </div>
+
+      <div class="formGrid">
+        <div class="field">
+          <label>Branch Name</label>
+          <select id="dBranch" onchange="onDisbBranchChange()"></select>
+        </div>
+        <div class="field" id="existingCustField" style="display:none;">
+          <label>Select Existing Customer</label>
+          <select id="dExistingCust" onchange="onExistingCustSelect()"></select>
+        </div>
+        <div class="field">
+          <label>Day</label>
+          <input type="text" id="dDay" placeholder="e.g. MONDAY">
+        </div>
+        <div class="field">
+          <label>Group Name</label>
+          <input type="text" id="dGroup" placeholder="Group name">
+        </div>
+        <div class="field">
+          <label>Customer Name</label>
+          <input type="text" id="dCustName">
+        </div>
+        <div class="field">
+          <label>Husband / Co-Applicant Name</label>
+          <input type="text" id="dHusband">
+        </div>
+        <div class="field">
+          <label>Phone No</label>
+          <input type="text" id="dPhone">
+        </div>
+        <div class="field">
+          <label>Loan Amount</label>
+          <input type="number" id="dLoanAmt">
+        </div>
+        <div class="field">
+          <label>EMI Amount</label>
+          <input type="number" id="dEmi">
+        </div>
+        <div class="field">
+          <label>Disbursal Date</label>
+          <input type="date" id="dDate">
+        </div>
+      </div>
+      <div class="footerBar">
+        <span id="disbMsg"></span>
+        <button class="primaryBtn" onclick="submitDisbursalEntry()">SUBMIT DISBURSAL</button>
+      </div>
+    </div>
+
+    <!-- ===== ADMIN PANEL ===== -->
+    <div class="page hidden" id="page-admin">
+      <div class="subTabBar">
+        <div class="subTabBtn active" data-sub="customers" onclick="switchAdminSub('customers')">Customers</div>
+        <div class="subTabBtn" data-sub="staff" onclick="switchAdminSub('staff')">Staff</div>
+        <div class="subTabBtn" data-sub="collectionHist" onclick="switchAdminSub('collectionHist')">Collection History</div>
+        <div class="subTabBtn" data-sub="disbursalHist" onclick="switchAdminSub('disbursalHist')">Disbursal History</div>
+      </div>
+      <div id="admin-customers"></div>
+      <div id="admin-staff" class="hidden"></div>
+      <div id="admin-collectionHist" class="hidden"></div>
+      <div id="admin-disbursalHist" class="hidden"></div>
+    </div>
+  </div>
+
+<script>
+/* =========================================================
+   PASTE YOUR DEPLOYED APPS SCRIPT WEB APP URL HERE
+   (Deploy -> Manage deployments -> copy the ".../exec" link)
+   ========================================================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbzz4OGtCuyKvlRovL7hyqLEn3olz4J3w_X83s050PsEiLKrLwa_0yALEk8fExmSoRX6nw/exec";
+
+let TOKEN = null;
+let CURRENT_USER = null;
+let BRANCH_CACHE = { branch: null, data: [] };
+let BRANCH_CACHE_DISB = { branch: null, data: [] };
+let VISIBLE_CUSTOMERS = [];
+let DISB_TYPE = 'New';
+
+/* ---------------- API HELPER ----------------
+   Every call is a POST with Content-Type: text/plain.
+   This keeps it a "simple request" so the browser does NOT send a
+   CORS pre-flight (Apps Script doesn't handle OPTIONS well), and
+   Apps Script returns plain JSON - never the Google app banner,
+   because that banner only appears on HtmlService app pages, not
+   on plain API responses like these. */
+async function callApi(action, data) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: action }, data || {}))
+  });
+  if (!res.ok) throw new Error('Network error (' + res.status + ')');
+  return res.json();
+}
+
+/* ---------------- LOGIN / LOGOUT ---------------- */
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  if (!u || !p) { document.getElementById('loginError').innerText = 'Enter staff name and password.'; return; }
+  document.getElementById('loginError').innerText = 'Checking...';
+  try {
+    const res = await callApi('login', { username: u, password: p });
+    if (!res.success) { document.getElementById('loginError').innerText = res.message; return; }
+    TOKEN = res.token;
+    CURRENT_USER = res;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.remove('hidden');
+    document.getElementById('userBadge').innerText = res.role + ' (' + res.name + ')';
+    if (res.role === 'ADMIN') document.getElementById('adminTabBtn').classList.remove('hidden');
+    populateSelect('colBranch', res.branches, 'Select Branch');
+    populateSelect('dBranch', res.branches, 'Select Branch');
+  } catch (e) {
+    document.getElementById('loginError').innerText = 'Error: ' + e.message;
+  }
+}
+async function logoutUser(){
+  if (TOKEN) { try { await callApi('logout', { token: TOKEN }); } catch (e) {} }
+  location.reload();
+}
+
+function populateSelect(id, list, placeholder) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="">' + placeholder + '</option>' +
+    list.map(v => '<option value="'+v+'">'+v+'</option>').join('');
+}
+function uniqueSorted(arr) { return Array.from(new Set(arr)).sort(); }
+
+/* ---------------- TABS ---------------- */
+function switchTab(name) {
+  document.querySelectorAll('.tabBtn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['collection','disbursal','admin'].forEach(p => {
+    document.getElementById('page-'+p).classList.toggle('hidden', p !== name);
+  });
+  if (name === 'admin') switchAdminSub('customers');
+}
+
+/* ---------------- COLLECTION ENTRY ---------------- */
+async function onCollectionBranchChange() {
+  const branch = document.getElementById('colBranch').value;
+  populateSelect('colDay', [], 'Select Day');
+  populateSelect('colGroup', [], 'Select Group');
+  document.getElementById('collectionBody').innerHTML = '';
+  if (!branch) return;
+  if (BRANCH_CACHE.branch === branch) { fillDaysFromCache(); return; }
+
+  document.getElementById('branchLoadNote').innerText = 'Loading branch data...';
+  try {
+    const list = await callApi('getBranchCollectionData', { token: TOKEN, branch: branch });
+    if (list.success === false) throw new Error(list.message);
+    BRANCH_CACHE = { branch: branch, data: list };
+    fillDaysFromCache();
+  } catch (e) {
+    alert('Error loading branch data: ' + e.message);
+  } finally {
+    document.getElementById('branchLoadNote').innerText = '';
+  }
+}
+function fillDaysFromCache() {
+  const order = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
+  const present = uniqueSorted(BRANCH_CACHE.data.map(c => c.day));
+  populateSelect('colDay', order.filter(d => present.indexOf(d) !== -1), 'Select Day');
+}
+function onCollectionDayChange() {
+  const day = document.getElementById('colDay').value;
+  if (!day) { populateSelect('colGroup', [], 'Select Group'); return; }
+  const groups = uniqueSorted(BRANCH_CACHE.data.filter(c => c.day === day).map(c => c.group));
+  populateSelect('colGroup', groups, 'Select Group');
+}
+
+function loadCustomers() {
+  const day = document.getElementById('colDay').value;
+  const group = document.getElementById('colGroup').value;
+  if (!document.getElementById('colBranch').value || !day || !group) { alert('Please select Branch, Day and Group.'); return; }
+  VISIBLE_CUSTOMERS = BRANCH_CACHE.data.filter(c => c.day === day && c.group === group);
+  renderCollectionTable();
+}
+
+function renderCollectionTable() {
+  const body = document.getElementById('collectionBody');
+  body.innerHTML = '';
+  VISIBLE_CUSTOMERS.forEach(function(c, idx){
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="nameCol">'+c.customerName+'</td>'+
+      '<td>'+c.husbandName+'</td>'+
+      '<td>'+c.phNo+'</td>'+
+      '<td>'+c.currentOS+'</td>'+
+      '<td>'+c.emiAmt+'</td>'+
+      '<td class="putCell"><input type="number" id="put_'+idx+'" value="'+c.emiAmt+'" onchange="recalcRow('+idx+')" oninput="recalcRow('+idx+')"></td>'+
+      '<td class="osCell" id="newos_'+idx+'">'+(c.currentOS-c.emiAmt)+'</td>';
+    body.appendChild(tr);
+  });
+  document.getElementById('custCount').innerText = VISIBLE_CUSTOMERS.length;
+  document.getElementById('colMsg').innerText = '';
+  recalcTotals();
+}
+function recalcRow(idx) {
+  const c = VISIBLE_CUSTOMERS[idx];
+  const put = Number(document.getElementById('put_'+idx).value) || 0;
+  document.getElementById('newos_'+idx).innerText = c.currentOS - put;
+  recalcTotals();
+}
+function recalcTotals() {
+  let tOS=0,tEmi=0,tPut=0,tNew=0;
+  VISIBLE_CUSTOMERS.forEach(function(c, idx){
+    const el = document.getElementById('put_'+idx);
+    const put = el ? (Number(el.value) || 0) : 0;
+    tOS += c.currentOS; tEmi += c.emiAmt; tPut += put; tNew += (c.currentOS - put);
+  });
+  document.getElementById('totOS').innerText = tOS;
+  document.getElementById('totEmi').innerText = tEmi;
+  document.getElementById('totPut').innerText = tPut;
+  document.getElementById('totNewOS').innerText = tNew;
+}
+
+async function submitCollectionEntry() {
+  if (!VISIBLE_CUSTOMERS.length) { alert('Load customers first.'); return; }
+  const branch = document.getElementById('colBranch').value;
+  const day = document.getElementById('colDay').value;
+  const group = document.getElementById('colGroup').value;
+  const entries = VISIBLE_CUSTOMERS.map(function(c, idx){
+    return { rowIndex: c.rowIndex, putAmount: Number(document.getElementById('put_'+idx).value) || 0 };
+  });
+  document.getElementById('submitColBtn').disabled = true;
+  document.getElementById('colMsg').innerHTML = 'Submitting...';
+  try {
+    const res = await callApi('submitCollection', { token: TOKEN, branch: branch, day: day, group: group, entries: entries });
+    if (res.success === false) throw new Error(res.message);
+    document.getElementById('colMsg').innerHTML = '<span class="msgOk">Collection submitted successfully!</span>';
+    entries.forEach(function(e){
+      const rec = BRANCH_CACHE.data.find(c => c.rowIndex === e.rowIndex);
+      if (rec) rec.currentOS -= e.putAmount;
+    });
+    loadCustomers();
+  } catch (e) {
+    document.getElementById('colMsg').innerHTML = '<span class="msgErr">Error: '+e.message+'</span>';
+  } finally {
+    document.getElementById('submitColBtn').disabled = false;
+  }
+}
+
+/* ---------------- LOAN DISBURSAL ---------------- */
+function setDisbType(t) {
+  DISB_TYPE = t;
+  document.getElementById('typeNewBtn').classList.toggle('active', t==='New');
+  document.getElementById('typeExistingBtn').classList.toggle('active', t==='Existing');
+  document.getElementById('existingCustField').style.display = (t==='Existing') ? 'flex' : 'none';
+  if (t === 'Existing') onDisbBranchChange();
+}
+async function onDisbBranchChange() {
+  const branch = document.getElementById('dBranch').value;
+  if (DISB_TYPE !== 'Existing' || !branch) return;
+  if (BRANCH_CACHE_DISB.branch === branch) { fillExistingCustSelect(); return; }
+  try {
+    const list = await callApi('getExistingCustomersForBranch', { token: TOKEN, branch: branch });
+    if (list.success === false) throw new Error(list.message);
+    BRANCH_CACHE_DISB = { branch: branch, data: list };
+    fillExistingCustSelect();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+function fillExistingCustSelect() {
+  const sel = document.getElementById('dExistingCust');
+  sel.innerHTML = '<option value="">Select Customer</option>' +
+    BRANCH_CACHE_DISB.data.map((c,i)=>'<option value="'+i+'">'+c.customerName+' - '+c.phNo+'</option>').join('');
+}
+function onExistingCustSelect() {
+  const i = document.getElementById('dExistingCust').value;
+  if (i === '') return;
+  const c = BRANCH_CACHE_DISB.data[i];
+  document.getElementById('dDay').value = c.day;
+  document.getElementById('dGroup').value = c.group;
+  document.getElementById('dCustName').value = c.customerName;
+  document.getElementById('dHusband').value = c.husbandName;
+  document.getElementById('dPhone').value = c.phNo;
+}
+
+async function submitDisbursalEntry() {
+  const branch = document.getElementById('dBranch').value;
+  if (!branch) { alert('Select branch.'); return; }
+  const payload = {
+    type: DISB_TYPE,
+    rowIndex: (DISB_TYPE==='Existing' && document.getElementById('dExistingCust').value !== '')
+                ? BRANCH_CACHE_DISB.data[document.getElementById('dExistingCust').value].rowIndex : null,
+    branch: branch,
+    area: '',
+    day: document.getElementById('dDay').value.trim().toUpperCase(),
+    group: document.getElementById('dGroup').value.trim(),
+    customerName: document.getElementById('dCustName').value.trim(),
+    husbandName: document.getElementById('dHusband').value.trim(),
+    phNo: document.getElementById('dPhone').value.trim(),
+    loanAmount: Number(document.getElementById('dLoanAmt').value) || 0,
+    emi: Number(document.getElementById('dEmi').value) || 0,
+    disbDate: document.getElementById('dDate').value
+  };
+  if (!payload.customerName || !payload.day || !payload.group || !payload.loanAmount) {
+    alert('Please fill Day, Group, Customer Name and Loan Amount.'); return;
+  }
+  document.getElementById('disbMsg').innerText = 'Submitting...';
+  try {
+    const res = await callApi('submitDisbursal', { token: TOKEN, payload: payload });
+    if (res.success === false) throw new Error(res.message);
+    document.getElementById('disbMsg').innerHTML = '<span class="msgOk">Disbursal saved (ID: '+res.custId+')</span>';
+    BRANCH_CACHE = { branch: null, data: [] };
+    BRANCH_CACHE_DISB = { branch: null, data: [] };
+    ['dDay','dGroup','dCustName','dHusband','dPhone','dLoanAmt','dEmi'].forEach(id=>document.getElementById(id).value='');
+  } catch (e) {
+    document.getElementById('disbMsg').innerHTML = '<span class="msgErr">Error: '+e.message+'</span>';
+  }
+}
+
+/* ---------------- ADMIN PANEL ---------------- */
+function switchAdminSub(name) {
+  document.querySelectorAll('.subTabBtn').forEach(b => b.classList.toggle('active', b.dataset.sub === name));
+  ['customers','staff','collectionHist','disbursalHist'].forEach(p=>{
+    document.getElementById('admin-'+p).classList.toggle('hidden', p !== name);
+  });
+  if (name === 'customers') loadAdminCustomers();
+  if (name === 'staff') loadAdminStaff();
+  if (name === 'collectionHist') loadAdminCollectionHist();
+  if (name === 'disbursalHist') loadAdminDisbursalHist();
+}
+
+async function loadAdminCustomers() {
+  const el = document.getElementById('admin-customers');
+  el.innerHTML = 'Loading...';
+  try {
+    const list = await callApi('adminGetAllCustomers', { token: TOKEN });
+    if (list.success === false) throw new Error(list.message);
+    let html = '<div class="tableWrap"><table class="dataTable"><thead><tr>' +
+      '<th class="nameCol">Customer</th><th>Husband</th><th>Ph No</th><th>Branch</th><th>Day</th><th>Group</th>'+
+      '<th>Loan Amt</th><th>EMI</th><th>Current OS</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+    list.forEach(function(c){
+      html += '<tr>'+
+        '<td class="nameCol">'+c.customerName+'</td><td>'+c.husbandName+'</td><td>'+c.phNo+'</td>'+
+        '<td>'+c.branch+'</td><td>'+c.day+'</td><td>'+c.group+'</td>'+
+        '<td>'+c.loanAmount+'</td><td>'+c.emi+'</td><td>'+c.currentOS+'</td><td>'+c.status+'</td>'+
+        '<td><button class="smallBtn edit" onclick="editCustomer('+c.rowIndex+')">Edit</button>'+
+        '<button class="smallBtn del" onclick="deleteCustomer('+c.rowIndex+')">Delete</button></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+    window.ADMIN_CUSTOMERS = list;
+  } catch (e) {
+    el.innerText = 'Error: ' + e.message;
+  }
+}
+async function editCustomer(rowIndex) {
+  const c = window.ADMIN_CUSTOMERS.find(x=>x.rowIndex===rowIndex);
+  if (!c) return;
+  const branch = prompt('Branch', c.branch); if (branch===null) return;
+  const area = prompt('Area', c.area); if (area===null) return;
+  const day = prompt('Day', c.day); if (day===null) return;
+  const group = prompt('Group', c.group); if (group===null) return;
+  const customerName = prompt('Customer Name', c.customerName); if (customerName===null) return;
+  const husbandName = prompt('Husband Name', c.husbandName); if (husbandName===null) return;
+  const phNo = prompt('Phone', c.phNo); if (phNo===null) return;
+  const loanAmount = prompt('Loan Amount', c.loanAmount); if (loanAmount===null) return;
+  const emi = prompt('EMI', c.emi); if (emi===null) return;
+  const currentOS = prompt('Current OS', c.currentOS); if (currentOS===null) return;
+  const status = prompt('Status (Active/Closed)', c.status); if (status===null) return;
+  await callApi('adminUpdateCustomer', { token: TOKEN, rowIndex: rowIndex,
+    fields: {branch,area,day,group,customerName,husbandName,phNo,loanAmount,emi,currentOS,status} });
+  loadAdminCustomers();
+}
+async function deleteCustomer(rowIndex) {
+  if (!confirm('Delete this customer permanently?')) return;
+  await callApi('adminDeleteCustomer', { token: TOKEN, rowIndex: rowIndex });
+  loadAdminCustomers();
+}
+
+async function loadAdminStaff() {
+  const el = document.getElementById('admin-staff');
+  el.innerHTML = 'Loading...';
+  try {
+    const list = await callApi('adminGetAllStaff', { token: TOKEN });
+    if (list.success === false) throw new Error(list.message);
+    let html = '<button class="primaryBtn" style="margin-bottom:12px;" onclick="addStaffPrompt()">+ Add Staff</button>'+
+      '<div class="tableWrap"><table class="dataTable"><thead><tr><th class="nameCol">Staff</th><th>Branch</th><th>Area</th><th>Password</th><th>Role</th><th>Action</th></tr></thead><tbody>';
+    list.forEach(function(s){
+      html += '<tr><td class="nameCol">'+s.staff+'</td><td>'+s.branch+'</td><td>'+s.area+'</td><td>'+s.password+'</td><td>'+s.role+'</td>'+
+        '<td><button class="smallBtn edit" onclick="editStaff('+s.rowIndex+')">Edit</button>'+
+        '<button class="smallBtn del" onclick="deleteStaff('+s.rowIndex+')">Delete</button></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+    window.ADMIN_STAFF = list;
+  } catch (e) {
+    el.innerText = 'Error: ' + e.message;
+  }
+}
+async function addStaffPrompt() {
+  const staff = prompt('Staff Name'); if (!staff) return;
+  const branch = prompt('Branch Name'); if (!branch) return;
+  const area = prompt('Area Name'); if (area===null) return;
+  const password = prompt('Password'); if (!password) return;
+  const role = prompt('Role (STAFF/ADMIN)', 'STAFF') || 'STAFF';
+  await callApi('adminAddStaff', { token: TOKEN, fields: {staff,branch,area,password,role} });
+  loadAdminStaff();
+}
+async function editStaff(rowIndex) {
+  const s = window.ADMIN_STAFF.find(x=>x.rowIndex===rowIndex);
+  if (!s) return;
+  const branch = prompt('Branch', s.branch); if (branch===null) return;
+  const area = prompt('Area', s.area); if (area===null) return;
+  const staff = prompt('Staff Name', s.staff); if (staff===null) return;
+  const password = prompt('Password', s.password); if (password===null) return;
+  const role = prompt('Role (STAFF/ADMIN)', s.role); if (role===null) return;
+  await callApi('adminUpdateStaff', { token: TOKEN, rowIndex: rowIndex, fields: {branch,area,staff,password,role} });
+  loadAdminStaff();
+}
+async function deleteStaff(rowIndex) {
+  if (!confirm('Delete this staff mapping?')) return;
+  await callApi('adminDeleteStaff', { token: TOKEN, rowIndex: rowIndex });
+  loadAdminStaff();
+}
+
+async function loadAdminCollectionHist() {
+  const el = document.getElementById('admin-collectionHist');
+  el.innerHTML = 'Loading...';
+  try {
+    const list = await callApi('adminGetCollectionHistory', { token: TOKEN, filters: {} });
+    if (list.success === false) throw new Error(list.message);
+    let html = '<div class="tableWrap"><table class="dataTable"><thead><tr>'+
+      '<th class="nameCol">Customer</th><th>Date</th><th>Branch</th><th>Day</th><th>Group</th>'+
+      '<th>EMI Amt</th><th>Put Amount</th><th>Prev OS</th><th>New OS</th></tr></thead><tbody>';
+    list.forEach(function(r){
+      html += '<tr><td class="nameCol">'+r.customerName+'</td><td>'+r.date+'</td><td>'+r.branch+'</td>'+
+        '<td>'+r.day+'</td><td>'+r.group+'</td><td>'+r.emiAmt+'</td><td>'+r.putAmount+'</td>'+
+        '<td>'+r.previousOS+'</td><td>'+r.newOS+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerText = 'Error: ' + e.message;
+  }
+}
+async function loadAdminDisbursalHist() {
+  const el = document.getElementById('admin-disbursalHist');
+  el.innerHTML = 'Loading...';
+  try {
+    const list = await callApi('adminGetDisbursalHistory', { token: TOKEN, filters: {} });
+    if (list.success === false) throw new Error(list.message);
+    let html = '<div class="tableWrap"><table class="dataTable"><thead><tr>'+
+      '<th class="nameCol">Customer</th><th>Date</th><th>Branch</th><th>Day</th><th>Group</th>'+
+      '<th>Loan Amt</th><th>EMI</th><th>Type</th></tr></thead><tbody>';
+    list.forEach(function(r){
+      html += '<tr><td class="nameCol">'+r.customerName+'</td><td>'+r.date+'</td><td>'+r.branch+'</td>'+
+        '<td>'+r.day+'</td><td>'+r.group+'</td><td>'+r.loanAmount+'</td><td>'+r.emi+'</td><td>'+r.type+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerText = 'Error: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
