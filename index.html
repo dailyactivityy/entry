@@ -1,615 +1,823 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Branch Operations Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; margin:0; background:#f4f6f9; color:#222; }
-    .hidden { display:none !important; }
-
-    #loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; }
-    .loginBox { background:#fff; padding:36px 32px; border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.12); width:320px; }
-    .loginBox h2 { margin-top:0; color:#1657c9; text-align:center; }
-    .loginBox input { width:100%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:6px; font-size:14px; }
-    .loginBox button { width:100%; padding:10px; margin-top:10px; background:#1657c9; color:#fff; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
-    .loginBox button:hover { background:#0f47ab; }
-    #loginError { color:#c62828; font-size:13px; min-height:18px; text-align:center; }
-
-    #appHeader { background:#fff; border-bottom:2px solid #1657c9; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; }
-    #appHeader h1 { font-size:19px; margin:0; color:#1657c9; }
-    .badge { background:#1657c9; color:#fff; padding:4px 10px; border-radius:14px; font-size:12px; margin-left:10px; }
-    .headerBtn { background:#fff; border:1px solid #bbb; padding:7px 14px; border-radius:6px; cursor:pointer; margin-left:8px; font-size:13px; }
-    .headerBtn.logout { border-color:#c62828; color:#c62828; }
-    .headerBtn.logout:hover { background:#c62828; color:#fff; }
-
-    #tabBar { background:#fff; display:flex; padding:0 20px; border-bottom:1px solid #ddd; }
-    .tabBtn { padding:12px 18px; cursor:pointer; font-size:14px; color:#555; border-bottom:3px solid transparent; }
-    .tabBtn.active { color:#1657c9; border-bottom-color:#1657c9; font-weight:bold; }
-
-    .page { padding:18px 20px; }
-
-    .filterRow { display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap; background:#fff; padding:16px; border-radius:8px; margin-bottom:16px; }
-    .filterField { display:flex; flex-direction:column; min-width:180px; }
-    .filterField label { font-size:12px; color:#555; margin-bottom:4px; font-weight:bold; }
-    .filterField select, .filterField input { padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
-    .primaryBtn { background:#1657c9; color:#fff; border:none; padding:10px 18px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:bold; }
-    .primaryBtn:hover { background:#0f47ab; }
-    .primaryBtn:disabled { background:#9db6e6; cursor:not-allowed; }
-
-    .tableWrap { background:#fff; border-radius:8px; overflow:auto; max-width:100%; }
-    table.dataTable { border-collapse:collapse; width:100%; min-width:700px; }
-    table.dataTable th, table.dataTable td { padding:10px 12px; border-bottom:1px solid #eee; font-size:13px; white-space:nowrap; text-align:center; }
-    table.dataTable th { background:#f7f9fc; color:#333; position:sticky; top:0; z-index:2; }
-    table.dataTable td.nameCol, table.dataTable th.nameCol {
-      position:sticky; left:0; background:#fff; text-align:left; font-weight:bold; z-index:1; box-shadow:2px 0 4px rgba(0,0,0,.05);
-    }
-    table.dataTable th.nameCol { background:#f7f9fc; z-index:3; }
-    table.dataTable td.putCell input { width:90px; padding:6px; border:1px solid #ccc; border-radius:5px; text-align:center; font-size:13px; }
-    table.dataTable tfoot td { font-weight:bold; background:#fafafa; }
-    .osCell { color:#1657c9; font-weight:bold; }
-    .footerBar { display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
-    .msgOk { color:#1e7e34; font-weight:bold; }
-    .msgErr { color:#c62828; font-weight:bold; }
-
-    .formGrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px; background:#fff; padding:18px; border-radius:8px; }
-    .formGrid .field { display:flex; flex-direction:column; }
-    .formGrid label { font-size:12px; font-weight:bold; color:#555; margin-bottom:4px; }
-    .formGrid input, .formGrid select { padding:9px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
-    .typeToggle { display:flex; gap:10px; margin-bottom:16px; }
-    .typeToggle button { flex:1; padding:10px; border:1px solid #1657c9; background:#fff; color:#1657c9; border-radius:6px; cursor:pointer; font-weight:bold; }
-    .typeToggle button.active { background:#1657c9; color:#fff; }
-
-    .subTabBar { display:flex; gap:6px; margin-bottom:14px; }
-    .subTabBtn { padding:8px 14px; border-radius:6px; background:#e9eef7; color:#1657c9; cursor:pointer; font-size:13px; font-weight:bold; }
-    .subTabBtn.active { background:#1657c9; color:#fff; }
-    .smallBtn { padding:5px 10px; font-size:12px; border-radius:5px; border:1px solid #ccc; background:#fff; cursor:pointer; margin:0 2px;}
-    .smallBtn.edit { color:#1657c9; border-color:#1657c9; }
-    .smallBtn.del { color:#c62828; border-color:#c62828; }
-    .loadingNote { font-size:12px; color:#888; margin-top:6px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loan Desk</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#edf1f0;--surface:#fff;--pine:#12534a;--pine-d:#0c3b34;--gold:#f0ad1b;--gold-l:#fff3d1;--ink:#16211f;--mute:#5d6d6a;--line:#d3ddda;--bad:#b3261e;--good:#1b7a3d;--r:10px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{font-family:'Mukta',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.35}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit;border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;background:#fff;min-height:44px;width:100%}
+input:focus,select:focus,button:focus-visible,a:focus-visible{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(18,83,74,.25)}
+input[readonly]{background:#f4f7f6;color:var(--ink)}
+input.bad{border-color:var(--bad);background:#fdeceb}
+.top{position:sticky;top:0;z-index:20;background:var(--pine);color:#fff;display:flex;align-items:center;gap:6px;padding:8px 10px}
+.top h1{font-size:19px;margin:0 0 0 4px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who{font-size:14px;opacity:.9;margin-right:4px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{background:transparent;border:0;color:#fff;width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
+.ib:hover{background:rgba(255,255,255,.16)}
+.ib svg,.mi svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.shell{display:flex;align-items:flex-start;min-height:100vh}
+.shell.in{min-height:calc(100vh - 56px)}
+.wrap{flex:1;min-width:0;width:100%;padding:14px 12px 120px}
+.side{display:none;width:240px;flex:none;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;background:#fff;border-right:1px solid var(--line);padding:14px 10px;flex-direction:column;gap:4px}
+.si{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:transparent;border:0;border-left:5px solid transparent;border-radius:8px;padding:12px 12px;font-size:17px;font-weight:500;color:var(--ink)}
+.si svg{width:22px;height:22px;flex:none;color:var(--pine);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.si:hover{background:#f4f7f6}
+.si.on{background:var(--gold-l);border-left-color:var(--gold);font-weight:700}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.login{max-width:400px;margin:12vh auto 0}
+.login h2{margin:0 0 14px;font-size:26px;color:var(--pine)}
+.login .fld{margin-bottom:12px}
+.menu{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.mi{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-left:6px solid var(--pine);border-radius:var(--r);padding:16px;font-size:19px;font-weight:700;text-align:left;color:var(--ink)}
+.mi:hover{border-left-color:var(--gold);background:#fbfcfb}
+.mi svg{width:28px;height:28px;color:var(--pine);flex:none}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span,.lab{font-size:13px;color:var(--mute);font-weight:500}
+.pk{display:grid;gap:12px;grid-template-columns:1fr}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.seg button{border:1.5px solid var(--line);background:#fff;border-radius:8px;min-height:44px;font-weight:500;color:var(--ink)}
+.seg button.on{background:var(--gold);border-color:var(--gold);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;min-height:42px;font-weight:500;color:var(--ink)}
+.chip.on{background:var(--pine);border-color:var(--pine);color:#fff;font-weight:700}
+.none{color:var(--mute);font-size:14px}
+.btn{background:var(--pine);color:#fff;border:0;border-radius:8px;font-weight:700;padding:10px 26px;min-height:48px;font-size:17px}
+.btn:hover{background:var(--pine-d)}
+.btn:disabled{opacity:.5}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.tabs button{border:1.5px solid var(--line);background:#fff;border-radius:8px;min-height:46px;font-weight:700;color:var(--ink)}
+.tabs button.on{background:var(--pine);border-color:var(--pine);color:#fff}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:15;padding:10px 12px}
+.bar>div{width:100%;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.bar .tot{display:flex;flex-direction:column;line-height:1.1}
+.bar .tot span{font-size:13px;color:var(--mute)}
+.bar .tot b{font-size:24px}
+.crow{display:grid;grid-template-columns:1fr 1fr 1fr 96px;column-gap:8px;row-gap:2px;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;align-items:start}
+.crow .c-name{grid-column:1/4;grid-row:1;font-weight:700;font-size:17px}
+.crow .c-hus{grid-column:1/3;grid-row:2}
+.crow .c-ph{grid-column:3;grid-row:2}
+.crow .c-out{grid-column:1;grid-row:3}
+.crow .c-od{grid-column:2;grid-row:3}
+.crow .c-emi{grid-column:3;grid-row:3}
+.crow .c-in{grid-column:4;grid-row:1/4;align-self:center}
+.crow [data-l]::before{content:attr(data-l);display:block;font-size:11px;color:var(--mute);font-weight:500}
+.crow .n{font-weight:700;font-size:16px}
+.crow .due{color:var(--bad)}
+.crow a{color:var(--pine);text-decoration:none;font-weight:500}
+.crow .c-in input{text-align:right;font-weight:700;font-size:18px;border-color:var(--pine)}
+.chead{display:none}
+.empty{color:var(--mute);padding:16px 4px}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.kv div{min-width:0}
+.kv span{display:block;font-size:13px;color:var(--mute);font-weight:500}
+.kv b{display:block;overflow-wrap:anywhere}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.res{margin-top:6px;border:1px solid var(--line);border-radius:8px;background:#fff;max-height:280px;overflow:auto}
+.ri{display:grid;grid-template-columns:1fr auto;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:#fff;padding:10px 12px;gap:0 10px}
+.ri:last-child{border-bottom:0}
+.ri:hover{background:var(--gold-l)}
+.ri b{grid-column:1}
+.ri em{grid-column:2;font-style:normal;font-weight:500;color:var(--pine)}
+.ri small{grid-column:1/3;color:var(--mute);font-size:13px}
+.upl,.upr{display:grid;grid-template-columns:1fr 1.3fr 44px;gap:8px;align-items:center;margin-bottom:8px}
+.upl span{font-size:13px;color:var(--mute);font-weight:500}
+.sq{width:44px;height:44px;min-height:44px;padding:0;border-radius:8px;border:1.5px solid var(--pine);background:#fff;color:var(--pine);font-size:24px;font-weight:700;line-height:1}
+.sq.rm{border-color:var(--line);color:var(--bad)}
+.sum{display:grid;grid-template-columns:1fr auto;gap:8px 12px}
+.sum span{color:var(--mute)}
+.sum b{text-align:right}
+.big{font-size:30px;font-weight:700}
+.hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:13px;color:var(--mute);font-weight:500;background:#f4f7f6}
+td.n,th.n{text-align:right}
+tr.tt td{font-weight:700;background:var(--gold-l)}
+.toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:8px;z-index:60;max-width:92vw;font-weight:500}
+.toast.bad{background:var(--bad)}
+.busy{position:fixed;inset:0;background:rgba(237,241,240,.7);z-index:50;display:grid;place-items:center}
+.spin{width:44px;height:44px;border-radius:50%;border:5px solid var(--line);border-top-color:var(--pine);animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+@media (min-width:760px){
+.wrap{padding:22px 24px 120px}
+.pk{grid-template-columns:1.2fr 2fr 1fr}
+.pk .pg{grid-column:1/-1}
+.crow,.chead{grid-template-columns:1.7fr 1.5fr 1.1fr .9fr .8fr .8fr 1fr;column-gap:12px;align-items:center;padding:8px 14px}
+.chead{display:grid;background:transparent;border:0;margin-bottom:2px;font-size:13px;color:var(--mute);font-weight:500;padding-top:0;padding-bottom:0}
+.chead .n{text-align:right}
+.crow .c-name,.crow .c-hus,.crow .c-ph,.crow .c-out,.crow .c-od,.crow .c-emi,.crow .c-in{grid-column:auto;grid-row:auto}
+.crow [data-l]::before{display:none}
+.crow .n{text-align:right}
+.crow .c-name{font-size:16px}
+.chead .n{font-size:13px;font-weight:500}
+}
+@media (min-width:980px){
+.side{display:flex}
+.wrap{padding:26px 34px 120px}
+.bar{left:240px}
+.bar{padding:10px 34px}
+#back{display:none}
+.top{padding:8px 18px}
+.who{max-width:220px;font-size:15px}
+}
+</style>
 </head>
 <body>
 
-  <div id="loginScreen">
-    <div class="loginBox">
-      <h2>Branch Operations Portal</h2>
-      <input type="text" id="loginUser" placeholder="Staff Name" autocomplete="username">
-      <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
-      <div id="loginError"></div>
-      <button onclick="doLogin()">LOGIN</button>
+<div class="top" id="top" hidden>
+  <button class="ib" id="back" hidden aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <h1 id="title">Loan Desk</h1>
+  <span class="who" id="who"></span>
+  <button class="ib" id="refresh" aria-label="Refresh"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button>
+  <button class="ib" id="logout" aria-label="Logout"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/></svg></button>
+</div>
+
+<div class="shell" id="shell">
+<nav class="side" id="side" hidden></nav>
+<main class="wrap">
+
+<section id="v-login" class="login panel">
+  <h2>Loan Desk</h2>
+  <label class="fld"><span>Userid</span><input id="lu" autocomplete="username" autocapitalize="off"></label>
+  <label class="fld"><span>Password</span><input id="lp" type="password" autocomplete="current-password"></label>
+  <button class="btn" id="lgo" style="width:100%">Login</button>
+</section>
+
+<section id="v-home" hidden>
+  <div class="menu">
+    <button class="mi" data-go="coll"><svg viewBox="0 0 24 24"><path d="M6 4h12M6 9h12M9 4c5 0 7 2.5 7 5s-2 5-7 5H8l8 7"/></svg>Collection</button>
+    <button class="mi" data-go="loan"><svg viewBox="0 0 24 24"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16" cy="14" r="1.5"/></svg>Loan Disbursed</button>
+    <button class="mi" data-go="txn"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Transaction</button>
+    <button class="mi" data-go="cash"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Cash in Hand</button>
+    <button class="mi" data-go="hist"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Customer History</button>
+    <button class="mi" data-go="rep"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Report</button>
+  </div>
+</section>
+
+<section id="v-coll" hidden>
+  <div class="panel" id="collPick"></div>
+  <div id="collList"></div>
+  <div class="bar" id="collBar" hidden><div><div class="tot"><span>Total Put Amt</span><b id="collTot">0</b></div><button class="btn" id="collGo">Submit</button></div></div>
+</section>
+
+<section id="v-loan" hidden>
+  <div class="tabs"><button data-m="existing" class="on">Existing Customer</button><button data-m="new">New Customer</button></div>
+  <div class="panel" id="loanPick"></div>
+  <div class="panel" id="lNewGroupBox" hidden><label class="fld"><span>Group Name</span><input id="lNewGroup" style="text-transform:uppercase"></label></div>
+  <div class="panel" id="lSearchBox">
+    <label class="fld"><span>Search</span><input id="lSearch" type="search" autocomplete="off"></label>
+    <div class="res" id="lRes" hidden></div>
+  </div>
+  <div class="panel" id="lDetails" hidden><div class="kv" id="lKv"></div></div>
+  <div class="panel" id="lNewFields" hidden>
+    <div class="grid2">
+      <label class="fld"><span>Customer Name</span><input id="lName" style="text-transform:uppercase"></label>
+      <label class="fld"><span>Husband Name</span><input id="lHus" style="text-transform:uppercase"></label>
+      <label class="fld"><span>Ph No</span><input id="lPh" inputmode="numeric" maxlength="10"></label>
     </div>
   </div>
-
-  <div id="appScreen" class="hidden">
-    <div id="appHeader">
-      <h1>Branch Operations Portal <span class="badge" id="userBadge"></span></h1>
-      <div><button class="headerBtn logout" onclick="logoutUser()">Logout</button></div>
-    </div>
-
-    <div id="tabBar">
-      <div class="tabBtn active" data-tab="collection" onclick="switchTab('collection')">Collection Entry</div>
-      <div class="tabBtn" data-tab="disbursal" onclick="switchTab('disbursal')">Loan Disbursal</div>
-      <div class="tabBtn hidden" id="adminTabBtn" data-tab="admin" onclick="switchTab('admin')">Admin Panel</div>
-    </div>
-
-    <!-- ===== COLLECTION ENTRY ===== -->
-    <div class="page" id="page-collection">
-      <div class="filterRow">
-        <div class="filterField">
-          <label>Branch Name</label>
-          <select id="colBranch" onchange="onCollectionBranchChange()"></select>
-        </div>
-        <div class="filterField">
-          <label>Select Day</label>
-          <select id="colDay" onchange="onCollectionDayChange()"></select>
-        </div>
-        <div class="filterField">
-          <label>Select Group</label>
-          <select id="colGroup"></select>
-        </div>
-        <button class="primaryBtn" onclick="loadCustomers()">LOAD CUSTOMERS</button>
-      </div>
-      <div class="loadingNote" id="branchLoadNote"></div>
-
-      <div class="tableWrap">
-        <table class="dataTable" id="collectionTable">
-          <thead>
-            <tr>
-              <th class="nameCol">Customer Name</th>
-              <th>Husband Name</th>
-              <th>Ph No</th>
-              <th>Current O/S</th>
-              <th>EMI Amt</th>
-              <th>Put Amount</th>
-              <th>New O/S</th>
-            </tr>
-          </thead>
-          <tbody id="collectionBody"></tbody>
-          <tfoot>
-            <tr>
-              <td class="nameCol">TOTAL</td>
-              <td></td><td></td>
-              <td id="totOS">0</td>
-              <td id="totEmi">0</td>
-              <td id="totPut">0</td>
-              <td id="totNewOS">0</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <div class="footerBar">
-        <div>Total Customers: <b id="custCount">0</b> &nbsp; <span id="colMsg"></span></div>
-        <button class="primaryBtn" id="submitColBtn" onclick="submitCollectionEntry()">SUBMIT COLLECTION</button>
-      </div>
-    </div>
-
-    <!-- ===== LOAN DISBURSAL ===== -->
-    <div class="page hidden" id="page-disbursal">
-      <div class="typeToggle">
-        <button id="typeNewBtn" class="active" onclick="setDisbType('New')">New Customer</button>
-        <button id="typeExistingBtn" onclick="setDisbType('Existing')">Existing Customer</button>
-      </div>
-
-      <div class="formGrid">
-        <div class="field">
-          <label>Branch Name</label>
-          <select id="dBranch" onchange="onDisbBranchChange()"></select>
-        </div>
-        <div class="field" id="existingCustField" style="display:none;">
-          <label>Select Existing Customer</label>
-          <select id="dExistingCust" onchange="onExistingCustSelect()"></select>
-        </div>
-        <div class="field">
-          <label>Day</label>
-          <input type="text" id="dDay" placeholder="e.g. MONDAY">
-        </div>
-        <div class="field">
-          <label>Group Name</label>
-          <input type="text" id="dGroup" placeholder="Group name">
-        </div>
-        <div class="field">
-          <label>Customer Name</label>
-          <input type="text" id="dCustName">
-        </div>
-        <div class="field">
-          <label>Husband / Co-Applicant Name</label>
-          <input type="text" id="dHusband">
-        </div>
-        <div class="field">
-          <label>Phone No</label>
-          <input type="text" id="dPhone">
-        </div>
-        <div class="field">
-          <label>Loan Amount</label>
-          <input type="number" id="dLoanAmt">
-        </div>
-        <div class="field">
-          <label>EMI Amount</label>
-          <input type="number" id="dEmi">
-        </div>
-        <div class="field">
-          <label>Disbursal Date</label>
-          <input type="date" id="dDate">
-        </div>
-      </div>
-      <div class="footerBar">
-        <span id="disbMsg"></span>
-        <button class="primaryBtn" onclick="submitDisbursalEntry()">SUBMIT DISBURSAL</button>
-      </div>
-    </div>
-
-    <!-- ===== ADMIN PANEL ===== -->
-    <div class="page hidden" id="page-admin">
-      <div class="subTabBar">
-        <div class="subTabBtn active" data-sub="customers" onclick="switchAdminSub('customers')">Customers</div>
-        <div class="subTabBtn" data-sub="staff" onclick="switchAdminSub('staff')">Staff</div>
-        <div class="subTabBtn" data-sub="collectionHist" onclick="switchAdminSub('collectionHist')">Collection History</div>
-        <div class="subTabBtn" data-sub="disbursalHist" onclick="switchAdminSub('disbursalHist')">Disbursal History</div>
-      </div>
-      <div id="admin-customers"></div>
-      <div id="admin-staff" class="hidden"></div>
-      <div id="admin-collectionHist" class="hidden"></div>
-      <div id="admin-disbursalHist" class="hidden"></div>
+  <div class="panel" id="lForm" hidden>
+    <div class="grid2">
+      <label class="fld"><span>Loan Amt</span><input id="lLoan" inputmode="numeric"></label>
+      <label class="fld"><span>Aadhar No</span><input id="lAad" inputmode="numeric" maxlength="12"></label>
+      <label class="fld"><span>Pan No</span><input id="lPan" maxlength="10" style="text-transform:uppercase" autocapitalize="characters"></label>
+      <label class="fld"><span>Bank A/C No</span><input id="lBank" inputmode="numeric" maxlength="20"></label>
+      <label class="fld"><span>Ifsc Code</span><input id="lIfsc" maxlength="11" style="text-transform:uppercase" autocapitalize="characters"></label>
+      <label class="fld"><span>Closing Outstanding</span><input id="lClose" readonly></label>
     </div>
   </div>
+  <div class="bar" id="lBar" hidden><div><span></span><button class="btn" id="lGo">Submit</button></div></div>
+</section>
+
+<section id="v-txn" hidden>
+  <div class="panel" id="txnPick"></div>
+  <div id="txnBody" hidden>
+    <div class="panel">
+      <div class="grid2">
+        <label class="fld"><span>Hdfc Deposit</span><input id="tHd" inputmode="numeric"></label>
+        <label class="fld"><span>Pnb Deposit</span><input id="tPd" inputmode="numeric"></label>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="upl"><span>Hdfc Upi Amt</span><span>Transaction Id</span><span></span></div>
+      <div id="tHu"></div>
+    </div>
+    <div class="panel">
+      <div class="upl"><span>Pnb Upi Amt</span><span>Transaction Id</span><span></span></div>
+      <div id="tPu"></div>
+    </div>
+    <div class="panel"><div class="sum">
+      <span>Hdfc Deposit Amt</span><b id="sHd">0</b>
+      <span>Pnb Deposit Amt</span><b id="sPd">0</b>
+      <span>Hdfc Upi Amt</span><b id="sHu">0</b>
+      <span>Pnb Upi Amt</span><b id="sPu">0</b>
+    </div></div>
+    <div class="bar"><div><span></span><button class="btn" id="tGo">Submit</button></div></div>
+  </div>
+</section>
+
+<section id="v-cash" hidden>
+  <div class="panel" id="cashPick"></div>
+  <div id="cashBody" hidden>
+    <div class="panel">
+      <div class="grid2">
+        <label class="fld"><span>Opening Cash</span><input id="kOpen" inputmode="numeric"></label>
+        <label class="fld"><span>Collection</span><input id="kColl" readonly></label>
+        <label class="fld"><span>Misc Inc</span><input id="kMisc" inputmode="numeric"></label>
+      </div>
+      <hr class="hr">
+      <div class="sum"><span>Total Income</span><b class="big" id="kInc">0</b></div>
+    </div>
+    <div class="panel">
+      <div class="grid2">
+        <label class="fld"><span>Hdfc Deposit</span><input id="kHd" readonly></label>
+        <label class="fld"><span>Pnb Deposit</span><input id="kPd" readonly></label>
+        <label class="fld"><span>Hdfc Upi</span><input id="kHu" readonly></label>
+        <label class="fld"><span>Pnb Upi</span><input id="kPu" readonly></label>
+      </div>
+      <hr class="hr">
+      <div class="sum"><span>Total Expense</span><b class="big" id="kExp">0</b></div>
+    </div>
+    <div class="panel"><div class="sum"><span>Close Cash</span><b class="big" id="kClose">0</b></div></div>
+    <div class="bar"><div><span></span><button class="btn" id="kGo">Submit</button></div></div>
+  </div>
+</section>
+
+<section id="v-hist" hidden>
+  <div class="panel">
+    <div class="pk" style="grid-template-columns:1fr">
+      <label class="fld"><span>Branch</span><select id="hB"></select></label>
+      <label class="fld"><span>Search</span><input id="hQ" type="search" autocomplete="off"></label>
+    </div>
+    <div class="res" id="hRes" hidden></div>
+  </div>
+  <div id="hOut"></div>
+</section>
+
+<section id="v-rep" hidden>
+  <div class="panel">
+    <div class="grid2">
+      <label class="fld"><span>Branch</span><select id="rB"></select></label>
+      <label class="fld"><span>From</span><input id="rF" type="date"></label>
+      <label class="fld"><span>To</span><input id="rT" type="date"></label>
+    </div>
+    <div style="margin-top:12px"><button class="btn" id="rGo">Show</button></div>
+  </div>
+  <div id="rOut"></div>
+</section>
+
+</main>
+</div>
+
+<div class="busy" id="busy" hidden><div class="spin"></div></div>
+<div class="toast" id="toast" hidden></div>
 
 <script>
-/* =========================================================
-   PASTE YOUR DEPLOYED APPS SCRIPT WEB APP URL HERE
-   (Deploy -> Manage deployments -> copy the ".../exec" link)
-   ========================================================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbzz4OGtCuyKvlRovL7hyqLEn3olz4J3w_X83s050PsEiLKrLwa_0yALEk8fExmSoRX6nw/exec";
+const API_URL='https://script.google.com/macros/s/AKfycbypNadmbnx6DGeQY_sT4iSeZV9opTy0mnb5Xt_ZpDljrX5jh1jplkXLT3NRipBR-0W10Q/exec';
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
+const ALLDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TITLES={home:'Loan Desk',coll:'Collection',loan:'Loan Disbursed',txn:'Transaction',cash:'Cash in Hand',hist:'Customer History',rep:'Report'};
+const S={token:'',name:'',role:'',branches:[],cust:[],byId:{},tree:{}};
+let view='login';
+let toastTimer=0;
 
-let TOKEN = null;
-let CURRENT_USER = null;
-let BRANCH_CACHE = { branch: null, data: [] };
-let BRANCH_CACHE_DISB = { branch: null, data: [] };
-let VISIBLE_CUSTOMERS = [];
-let DISB_TYPE = 'New';
+const $=(q,r)=>(r||document).querySelector(q);
+const $$=(q,r)=>Array.from((r||document).querySelectorAll(q));
+const nf=n=>Number(n||0).toLocaleString('en-IN');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const isoOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const dayOfIso=s=>{const p=s.split('-');return ALLDAYS[new Date(+p[0],+p[1]-1,+p[2]).getDay()];};
+const dmy=s=>{const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+const digits=el=>{el.value=el.value.replace(/\D/g,'');};
+function lsGet(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
+function lsSet(k,v){try{if(v)localStorage.setItem(k,v);else localStorage.removeItem(k);}catch(e){}}
+function latestDate(day){const d=new Date();for(let i=0;i<7;i++){if(ALLDAYS[d.getDay()]===day)return isoOf(d);d.setDate(d.getDate()-1);}return isoOf(new Date());}
 
-/* ---------------- API HELPER ----------------
-   Every call is a POST with Content-Type: text/plain.
-   This keeps it a "simple request" so the browser does NOT send a
-   CORS pre-flight (Apps Script doesn't handle OPTIONS well), and
-   Apps Script returns plain JSON - never the Google app banner,
-   because that banner only appears on HtmlService app pages, not
-   on plain API responses like these. */
-async function callApi(action, data) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ action: action }, data || {}))
-  });
-  if (!res.ok) throw new Error('Network error (' + res.status + ')');
-  return res.json();
+function toast(msg,bad){
+  const t=$('#toast');
+  t.textContent=msg;
+  t.className='toast'+(bad?' bad':'');
+  t.hidden=false;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{t.hidden=true;},bad?3600:2000);
 }
+function busy(on){$('#busy').hidden=!on;}
 
-/* ---------------- LOGIN / LOGOUT ---------------- */
-async function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value.trim();
-  if (!u || !p) { document.getElementById('loginError').innerText = 'Enter staff name and password.'; return; }
-  document.getElementById('loginError').innerText = 'Checking...';
-  try {
-    const res = await callApi('login', { username: u, password: p });
-    if (!res.success) { document.getElementById('loginError').innerText = res.message; return; }
-    TOKEN = res.token;
-    CURRENT_USER = res;
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('appScreen').classList.remove('hidden');
-    document.getElementById('userBadge').innerText = res.role + ' (' + res.name + ')';
-    if (res.role === 'ADMIN') document.getElementById('adminTabBtn').classList.remove('hidden');
-    populateSelect('colBranch', res.branches, 'Select Branch');
-    populateSelect('dBranch', res.branches, 'Select Branch');
-  } catch (e) {
-    document.getElementById('loginError').innerText = 'Error: ' + e.message;
+async function call(action,payload){
+  if(!API_URL||API_URL.indexOf('PASTE_')===0)throw new Error('API_URL not set in index.html');
+  let res;
+  try{
+    res=await fetch(API_URL,{method:'POST',body:JSON.stringify({action:action,token:S.token,p:payload||{}})});
+  }catch(e){throw new Error('No internet or server not reachable');}
+  let r;
+  try{r=await res.json();}catch(e){throw new Error('Server error. Try again');}
+  if(r&&r.ok)return r.data;
+  throw new Error((r&&r.error)||'Failed');
+}
+async function safe(fn,withBusy){
+  if(withBusy)busy(true);
+  try{return await fn();}
+  catch(e){
+    if(e.message==='SESSION'){signOut();toast('Login again',true);}
+    else toast(e.message,true);
+    return null;
   }
-}
-async function logoutUser(){
-  if (TOKEN) { try { await callApi('logout', { token: TOKEN }); } catch (e) {} }
-  location.reload();
+  finally{if(withBusy)busy(false);}
 }
 
-function populateSelect(id, list, placeholder) {
-  const sel = document.getElementById(id);
-  sel.innerHTML = '<option value="">' + placeholder + '</option>' +
-    list.map(v => '<option value="'+v+'">'+v+'</option>').join('');
+function applyBoot(d){
+  S.name=d.name;S.role=d.role;S.branches=d.branches;
+  S.cust=d.customers.map(a=>({id:a[0],branch:a[1],day:a[2],group:a[3],name:a[4],husband:a[5],phone:a[6],emi:a[7],close:a[8],od:a[9]}));
+  buildTree();
 }
-function uniqueSorted(arr) { return Array.from(new Set(arr)).sort(); }
-
-/* ---------------- TABS ---------------- */
-function switchTab(name) {
-  document.querySelectorAll('.tabBtn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  ['collection','disbursal','admin'].forEach(p => {
-    document.getElementById('page-'+p).classList.toggle('hidden', p !== name);
+function buildTree(){
+  S.byId={};
+  const t={};
+  S.cust.forEach(c=>{
+    S.byId[c.id]=c;
+    if(!t[c.branch])t[c.branch]={};
+    if(!t[c.branch][c.day])t[c.branch][c.day]=new Set();
+    t[c.branch][c.day].add(c.group);
   });
-  if (name === 'admin') switchAdminSub('customers');
+  S.tree=t;
 }
+function groupsOf(b,d){const s=S.tree[b]&&S.tree[b][d];return s?Array.from(s).sort():[];}
 
-/* ---------------- COLLECTION ENTRY ---------------- */
-async function onCollectionBranchChange() {
-  const branch = document.getElementById('colBranch').value;
-  populateSelect('colDay', [], 'Select Day');
-  populateSelect('colGroup', [], 'Select Group');
-  document.getElementById('collectionBody').innerHTML = '';
-  if (!branch) return;
-  if (BRANCH_CACHE.branch === branch) { fillDaysFromCache(); return; }
-
-  document.getElementById('branchLoadNote').innerText = 'Loading branch data...';
-  try {
-    const list = await callApi('getBranchCollectionData', { token: TOKEN, branch: branch });
-    if (list.success === false) throw new Error(list.message);
-    BRANCH_CACHE = { branch: branch, data: list };
-    fillDaysFromCache();
-  } catch (e) {
-    alert('Error loading branch data: ' + e.message);
-  } finally {
-    document.getElementById('branchLoadNote').innerText = '';
+function picker(host,cfg){
+  const st={branch:'',day:'',date:isoOf(new Date()),group:''};
+  const tn=ALLDAYS[new Date().getDay()];
+  if(cfg.day&&DAYS.indexOf(tn)>=0)st.day=tn;
+  const last=lsGet('branch');
+  st.branch=S.branches.length===1?S.branches[0]:(S.branches.indexOf(last)>=0?last:'');
+  host.innerHTML='<div class="pk">'+
+    '<label class="fld"><span>Branch</span><select class="pb"></select></label>'+
+    (cfg.day?'<div class="fld"><span>Day</span><div class="seg"></div></div>':'')+
+    '<label class="fld"><span>Date</span><input class="pd" type="date"></label>'+
+    (cfg.group?'<div class="fld pg"><span>Group</span><div class="chips"></div></div>':'')+
+    '</div>';
+  const pb=$('.pb',host),pd=$('.pd',host),dEl=cfg.day?$('.seg',host):null,gEl=cfg.group?$('.chips',host):null;
+  pb.innerHTML='<option value="">Select Branch</option>'+S.branches.map(b=>'<option value="'+esc(b)+'">'+esc(b)+'</option>').join('');
+  if(dEl)dEl.innerHTML=DAYS.map(d=>'<button type="button" data-d="'+d+'">'+d.slice(0,3)+'</button>').join('');
+  function paintGroups(){
+    if(!gEl)return;
+    const list=groupsOf(st.branch,st.day);
+    let h=list.map(g=>'<button type="button" class="chip'+(st.group===g?' on':'')+'" data-g="'+esc(g)+'">'+esc(g)+'</button>').join('');
+    if(cfg.newGroup&&st.branch)h+='<button type="button" class="chip'+(st.group==='__new__'?' on':'')+'" data-g="__new__">New Group</button>';
+    if(!h)h='<span class="none">'+(st.branch?'No groups':'')+'</span>';
+    gEl.innerHTML=h;
   }
-}
-function fillDaysFromCache() {
-  const order = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
-  const present = uniqueSorted(BRANCH_CACHE.data.map(c => c.day));
-  populateSelect('colDay', order.filter(d => present.indexOf(d) !== -1), 'Select Day');
-}
-function onCollectionDayChange() {
-  const day = document.getElementById('colDay').value;
-  if (!day) { populateSelect('colGroup', [], 'Select Group'); return; }
-  const groups = uniqueSorted(BRANCH_CACHE.data.filter(c => c.day === day).map(c => c.group));
-  populateSelect('colGroup', groups, 'Select Group');
+  function paint(){
+    pb.value=st.branch;
+    pd.value=st.date;
+    if(dEl)$$('button',dEl).forEach(b=>b.classList.toggle('on',b.dataset.d===st.day));
+    paintGroups();
+  }
+  function fire(w){if(cfg.onChange)cfg.onChange(w);}
+  pb.addEventListener('change',()=>{st.branch=pb.value;st.group='';lsSet('branch',st.branch);paintGroups();fire('branch');});
+  if(dEl)dEl.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    st.day=b.dataset.d;
+    if(dayOfIso(st.date)!==st.day)st.date=latestDate(st.day);
+    st.group='';paint();fire('day');
+  });
+  pd.addEventListener('change',()=>{
+    if(!pd.value)return;
+    st.date=pd.value;
+    if(cfg.day){const dn=dayOfIso(st.date);if(DAYS.indexOf(dn)>=0&&dn!==st.day){st.day=dn;st.group='';}}
+    paint();fire('date');
+  });
+  if(gEl)gEl.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    st.group=b.dataset.g;paintGroups();fire('group');
+  });
+  paint();
+  return {st:st,cfg:cfg,paint:paint,paintGroups:paintGroups,set:function(o){Object.assign(st,o);paint();}};
 }
 
-function loadCustomers() {
-  const day = document.getElementById('colDay').value;
-  const group = document.getElementById('colGroup').value;
-  if (!document.getElementById('colBranch').value || !day || !group) { alert('Please select Branch, Day and Group.'); return; }
-  VISIBLE_CUSTOMERS = BRANCH_CACHE.data.filter(c => c.day === day && c.group === group);
-  renderCollectionTable();
+const LOADERS={};
+function go(name){
+  view=name;
+  $$('section').forEach(s=>{s.hidden=s.id!=='v-'+name;});
+  $('#top').hidden=name==='login';
+  $('#side').hidden=name==='login';
+  $('#shell').classList.toggle('in',name!=='login');
+  $$('.si').forEach(b=>b.classList.toggle('on',b.dataset.go===name));
+  $('#back').hidden=name==='home'||name==='login';
+  $('#title').textContent=TITLES[name]||'Loan Desk';
+  window.scrollTo(0,0);
+  if(LOADERS[name])LOADERS[name]();
 }
 
-function renderCollectionTable() {
-  const body = document.getElementById('collectionBody');
-  body.innerHTML = '';
-  VISIBLE_CUSTOMERS.forEach(function(c, idx){
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td class="nameCol">'+c.customerName+'</td>'+
-      '<td>'+c.husbandName+'</td>'+
-      '<td>'+c.phNo+'</td>'+
-      '<td>'+c.currentOS+'</td>'+
-      '<td>'+c.emiAmt+'</td>'+
-      '<td class="putCell"><input type="number" id="put_'+idx+'" value="'+c.emiAmt+'" onchange="recalcRow('+idx+')" oninput="recalcRow('+idx+')"></td>'+
-      '<td class="osCell" id="newos_'+idx+'">'+(c.currentOS-c.emiAmt)+'</td>';
-    body.appendChild(tr);
-  });
-  document.getElementById('custCount').innerText = VISIBLE_CUSTOMERS.length;
-  document.getElementById('colMsg').innerText = '';
-  recalcTotals();
-}
-function recalcRow(idx) {
-  const c = VISIBLE_CUSTOMERS[idx];
-  const put = Number(document.getElementById('put_'+idx).value) || 0;
-  document.getElementById('newos_'+idx).innerText = c.currentOS - put;
-  recalcTotals();
-}
-function recalcTotals() {
-  let tOS=0,tEmi=0,tPut=0,tNew=0;
-  VISIBLE_CUSTOMERS.forEach(function(c, idx){
-    const el = document.getElementById('put_'+idx);
-    const put = el ? (Number(el.value) || 0) : 0;
-    tOS += c.currentOS; tEmi += c.emiAmt; tPut += put; tNew += (c.currentOS - put);
-  });
-  document.getElementById('totOS').innerText = tOS;
-  document.getElementById('totEmi').innerText = tEmi;
-  document.getElementById('totPut').innerText = tPut;
-  document.getElementById('totNewOS').innerText = tNew;
+function enter(){
+  $('#who').textContent=S.name;
+  $('#side').innerHTML='<button class="si" data-go="home"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></svg>Home</button>'+
+    $$('.mi').map(b=>'<button class="si" data-go="'+b.dataset.go+'">'+b.innerHTML+'</button>').join('');
+  C.p=picker($('#collPick'),{day:1,group:1,onChange:collLoad});
+  L.p=picker($('#loanPick'),{day:1,group:1,newGroup:0,onChange:loanPick});
+  T.p=picker($('#txnPick'),{day:1,onChange:txnLoad});
+  K.p=picker($('#cashPick'),{onChange:cashLoad});
+  const opt='<option value="">Select Branch</option>'+S.branches.map(b=>'<option value="'+esc(b)+'">'+esc(b)+'</option>').join('');
+  $('#hB').innerHTML=opt;
+  $('#rB').innerHTML='<option value="">All Branch</option>'+S.branches.map(b=>'<option value="'+esc(b)+'">'+esc(b)+'</option>').join('');
+  if(S.branches.length===1)$('#hB').value=S.branches[0];
+  else $('#hB').value=S.branches.indexOf(lsGet('branch'))>=0?lsGet('branch'):'';
+  $('#rF').value=$('#rT').value=isoOf(new Date());
+  $('#hQ').value='';$('#hOut').innerHTML='';$('#hRes').hidden=true;$('#rOut').innerHTML='';
+  setMode('existing');
+  go('home');
 }
 
-async function submitCollectionEntry() {
-  if (!VISIBLE_CUSTOMERS.length) { alert('Load customers first.'); return; }
-  const branch = document.getElementById('colBranch').value;
-  const day = document.getElementById('colDay').value;
-  const group = document.getElementById('colGroup').value;
-  const entries = VISIBLE_CUSTOMERS.map(function(c, idx){
-    return { rowIndex: c.rowIndex, putAmount: Number(document.getElementById('put_'+idx).value) || 0 };
-  });
-  document.getElementById('submitColBtn').disabled = true;
-  document.getElementById('colMsg').innerHTML = 'Submitting...';
-  try {
-    const res = await callApi('submitCollection', { token: TOKEN, branch: branch, day: day, group: group, entries: entries });
-    if (res.success === false) throw new Error(res.message);
-    document.getElementById('colMsg').innerHTML = '<span class="msgOk">Collection submitted successfully!</span>';
-    entries.forEach(function(e){
-      const rec = BRANCH_CACHE.data.find(c => c.rowIndex === e.rowIndex);
-      if (rec) rec.currentOS -= e.putAmount;
+function signOut(){
+  lsSet('tok','');
+  S.token='';
+  $('#lp').value='';
+  go('login');
+}
+
+async function doLogin(){
+  const user=$('#lu').value.trim(),pass=$('#lp').value;
+  if(!user||!pass){toast('Enter Userid and Password',true);return;}
+  busy(true);
+  try{
+    const d=await call('login',{user:user,pass:pass});
+    S.token=d.token;lsSet('tok',d.token);
+    applyBoot(d);enter();
+  }catch(e){toast(e.message,true);}
+  finally{busy(false);}
+}
+
+async function reload(){
+  const d=await safe(()=>call('boot'),true);
+  if(!d)return;
+  applyBoot(d);
+  if(LOADERS[view])LOADERS[view]();
+  toast('Updated');
+}
+
+const C={p:null,rows:[],req:0};
+LOADERS.coll=()=>collLoad();
+function collLoad(){
+  const st=C.p.st;
+  if(!st.branch||!st.day||!st.group){C.rows=[];$('#collList').innerHTML='';$('#collBar').hidden=true;return;}
+  C.rows=S.cust.filter(c=>c.branch===st.branch&&c.day===st.day&&c.group===st.group).map(c=>({c:c,ex:null,val:''}));
+  collPaint();
+  const req=++C.req;
+  safe(()=>call('collectionEntries',{branch:st.branch,date:st.date})).then(map=>{
+    if(!map||req!==C.req)return;
+    C.rows.forEach(r=>{
+      r.ex=map[r.c.id]||null;
+      if(r.ex&&r.val==='')r.val=String(r.ex.put);
     });
-    loadCustomers();
-  } catch (e) {
-    document.getElementById('colMsg').innerHTML = '<span class="msgErr">Error: '+e.message+'</span>';
-  } finally {
-    document.getElementById('submitColBtn').disabled = false;
-  }
-}
-
-/* ---------------- LOAN DISBURSAL ---------------- */
-function setDisbType(t) {
-  DISB_TYPE = t;
-  document.getElementById('typeNewBtn').classList.toggle('active', t==='New');
-  document.getElementById('typeExistingBtn').classList.toggle('active', t==='Existing');
-  document.getElementById('existingCustField').style.display = (t==='Existing') ? 'flex' : 'none';
-  if (t === 'Existing') onDisbBranchChange();
-}
-async function onDisbBranchChange() {
-  const branch = document.getElementById('dBranch').value;
-  if (DISB_TYPE !== 'Existing' || !branch) return;
-  if (BRANCH_CACHE_DISB.branch === branch) { fillExistingCustSelect(); return; }
-  try {
-    const list = await callApi('getExistingCustomersForBranch', { token: TOKEN, branch: branch });
-    if (list.success === false) throw new Error(list.message);
-    BRANCH_CACHE_DISB = { branch: branch, data: list };
-    fillExistingCustSelect();
-  } catch (e) {
-    alert('Error: ' + e.message);
-  }
-}
-function fillExistingCustSelect() {
-  const sel = document.getElementById('dExistingCust');
-  sel.innerHTML = '<option value="">Select Customer</option>' +
-    BRANCH_CACHE_DISB.data.map((c,i)=>'<option value="'+i+'">'+c.customerName+' - '+c.phNo+'</option>').join('');
-}
-function onExistingCustSelect() {
-  const i = document.getElementById('dExistingCust').value;
-  if (i === '') return;
-  const c = BRANCH_CACHE_DISB.data[i];
-  document.getElementById('dDay').value = c.day;
-  document.getElementById('dGroup').value = c.group;
-  document.getElementById('dCustName').value = c.customerName;
-  document.getElementById('dHusband').value = c.husbandName;
-  document.getElementById('dPhone').value = c.phNo;
-}
-
-async function submitDisbursalEntry() {
-  const branch = document.getElementById('dBranch').value;
-  if (!branch) { alert('Select branch.'); return; }
-  const payload = {
-    type: DISB_TYPE,
-    rowIndex: (DISB_TYPE==='Existing' && document.getElementById('dExistingCust').value !== '')
-                ? BRANCH_CACHE_DISB.data[document.getElementById('dExistingCust').value].rowIndex : null,
-    branch: branch,
-    area: '',
-    day: document.getElementById('dDay').value.trim().toUpperCase(),
-    group: document.getElementById('dGroup').value.trim(),
-    customerName: document.getElementById('dCustName').value.trim(),
-    husbandName: document.getElementById('dHusband').value.trim(),
-    phNo: document.getElementById('dPhone').value.trim(),
-    loanAmount: Number(document.getElementById('dLoanAmt').value) || 0,
-    emi: Number(document.getElementById('dEmi').value) || 0,
-    disbDate: document.getElementById('dDate').value
-  };
-  if (!payload.customerName || !payload.day || !payload.group || !payload.loanAmount) {
-    alert('Please fill Day, Group, Customer Name and Loan Amount.'); return;
-  }
-  document.getElementById('disbMsg').innerText = 'Submitting...';
-  try {
-    const res = await callApi('submitDisbursal', { token: TOKEN, payload: payload });
-    if (res.success === false) throw new Error(res.message);
-    document.getElementById('disbMsg').innerHTML = '<span class="msgOk">Disbursal saved (ID: '+res.custId+')</span>';
-    BRANCH_CACHE = { branch: null, data: [] };
-    BRANCH_CACHE_DISB = { branch: null, data: [] };
-    ['dDay','dGroup','dCustName','dHusband','dPhone','dLoanAmt','dEmi'].forEach(id=>document.getElementById(id).value='');
-  } catch (e) {
-    document.getElementById('disbMsg').innerHTML = '<span class="msgErr">Error: '+e.message+'</span>';
-  }
-}
-
-/* ---------------- ADMIN PANEL ---------------- */
-function switchAdminSub(name) {
-  document.querySelectorAll('.subTabBtn').forEach(b => b.classList.toggle('active', b.dataset.sub === name));
-  ['customers','staff','collectionHist','disbursalHist'].forEach(p=>{
-    document.getElementById('admin-'+p).classList.toggle('hidden', p !== name);
+    collPaint();
   });
-  if (name === 'customers') loadAdminCustomers();
-  if (name === 'staff') loadAdminStaff();
-  if (name === 'collectionHist') loadAdminCollectionHist();
-  if (name === 'disbursalHist') loadAdminDisbursalHist();
+}
+function collPaint(){
+  const list=$('#collList');
+  if(!C.rows.length){list.innerHTML='<div class="empty">No customers</div>';$('#collBar').hidden=true;return;}
+  let h='<div class="crow chead"><div>Customer Name</div><div>Husband Name</div><div>Ph No</div><div class="n">Outstanding</div><div class="n">OD Amt</div><div class="n">Emi Amt</div><div class="n">Put Amt</div></div>';
+  h+=C.rows.map((r,i)=>{
+    const c=r.c,out=r.ex?r.ex.open:c.close,od=r.ex?r.ex.odb:c.od;
+    return '<div class="crow">'+
+      '<div class="c-name">'+esc(c.name)+'</div>'+
+      '<div class="c-hus" data-l="Husband Name">'+esc(c.husband)+'</div>'+
+      '<div class="c-ph" data-l="Ph No">'+(c.phone?'<a href="tel:'+esc(c.phone)+'">'+esc(c.phone)+'</a>':'&nbsp;')+'</div>'+
+      '<div class="n c-out" data-l="Outstanding">'+nf(out)+'</div>'+
+      '<div class="n c-od'+(od>0?' due':'')+'" data-l="OD Amt">'+nf(od)+'</div>'+
+      '<div class="n c-emi" data-l="Emi Amt">'+(c.emi==='TO'?'TO':nf(c.emi))+'</div>'+
+      '<div class="c-in"><input inputmode="numeric" data-i="'+i+'" value="'+esc(r.val)+'" aria-label="Put Amt"></div>'+
+      '</div>';
+  }).join('');
+  list.innerHTML=h;
+  $('#collBar').hidden=false;
+  collTotal();
+}
+function collTotal(){
+  let t=0;
+  C.rows.forEach(r=>{t+=Number(r.val||0);});
+  $('#collTot').textContent=nf(t);
+}
+$('#collList').addEventListener('input',e=>{
+  const el=e.target;if(el.tagName!=='INPUT')return;
+  digits(el);
+  const r=C.rows[+el.dataset.i];
+  r.val=el.value;
+  const out=r.ex?r.ex.open:r.c.close;
+  el.classList.toggle('bad',Number(r.val||0)>out);
+  collTotal();
+});
+$('#collList').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||e.target.tagName!=='INPUT')return;
+  e.preventDefault();
+  const all=$$('#collList .c-in input');
+  const n=all[all.indexOf(e.target)+1];
+  if(n)n.focus();else e.target.blur();
+});
+$('#collGo').addEventListener('click',async()=>{
+  const st=C.p.st,items=[];
+  for(const r of C.rows){
+    const put=Number(r.val||0),before=r.ex?r.ex.put:0,out=r.ex?r.ex.open:r.c.close;
+    if(put>out){toast('Put Amt is more than Outstanding: '+r.c.name,true);return;}
+    if(put!==before)items.push({id:r.c.id,put:put});
+  }
+  if(!items.length){toast('No change');return;}
+  const res=await safe(()=>call('saveCollection',{branch:st.branch,day:st.day,date:st.date,group:st.group,items:items}),true);
+  if(!res)return;
+  const m={};items.forEach(i=>{m[i.id]=i.put;});
+  C.rows.forEach(r=>{
+    if(m[r.c.id]===undefined)return;
+    const put=m[r.c.id];
+    if(put===0){r.ex=null;r.val='';return;}
+    r.ex={put:put,open:r.ex?r.ex.open:r.c.close,odb:r.ex?r.ex.odb:r.c.od};
+  });
+  res.customers.forEach(u=>{const c=S.byId[u.id];if(c){c.close=u.close;c.od=u.od;}});
+  collPaint();
+  toast('Saved');
+});
+
+const L={p:null,mode:'existing',sel:null};
+function loanPick(){
+  L.sel=null;
+  $('#lNewGroupBox').hidden=!(L.mode==='new'&&L.p.st.group==='__new__');
+  loanShow();
+}
+function loanShow(){
+  const isNew=L.mode==='new';
+  $('#lSearchBox').hidden=isNew;
+  $('#lNewFields').hidden=!isNew;
+  $('#lDetails').hidden=isNew||!L.sel;
+  $('#lForm').hidden=isNew?false:!L.sel;
+  $('#lBar').hidden=$('#lForm').hidden;
+  $('#lNewGroupBox').hidden=!(isNew&&L.p.st.group==='__new__');
+  if(L.sel){
+    const c=L.sel;
+    $('#lKv').innerHTML=[['Branch',c.branch],['Day',c.day],['Customer Name',c.name],['Husband Name',c.husband],['Ph No',c.phone],['Group Name',c.group]]
+      .map(x=>'<div><span>'+x[0]+'</span><b>'+esc(x[1]||'-')+'</b></div>').join('');
+  }
+  loanCalc();
+}
+function loanReset(){
+  L.sel=null;
+  ['lSearch','lName','lHus','lPh','lLoan','lAad','lPan','lBank','lIfsc','lClose','lNewGroup'].forEach(id=>{$('#'+id).value='';});
+  $('#lRes').hidden=true;
+  loanShow();
+}
+function setMode(m){
+  L.mode=m;
+  $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  L.p.cfg.newGroup=m==='new'?1:0;
+  L.p.st.group='';
+  L.p.paint();
+  loanReset();
+}
+LOADERS.loan=()=>{};
+$$('.tabs button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.m)));
+function loanCalc(){
+  const v=Number($('#lLoan').value||0);
+  $('#lClose').value=v>0?nf(Math.round(v*1.24)):'';
+}
+function resBox(el,list,onPick){
+  if(!list.length){el.innerHTML='<div class="empty">No customers</div>';el.hidden=false;return;}
+  el.innerHTML=list.map(c=>'<button type="button" class="ri" data-id="'+esc(c.id)+'"><b>'+esc(c.name)+'</b><em>'+esc(c.phone)+'</em><small>'+esc(c.husband)+' - '+esc(c.group)+', '+esc(c.day)+'</small></button>').join('');
+  el.hidden=false;
+  el.onclick=e=>{const b=e.target.closest('.ri');if(!b)return;el.hidden=true;onPick(S.byId[b.dataset.id]);};
+}
+function findCust(branch,q,fallback){
+  q=q.trim().toLowerCase();
+  if(q.length<2)return fallback;
+  return S.cust.filter(c=>c.branch===branch&&(c.phone.indexOf(q)>=0||c.name.toLowerCase().indexOf(q)>=0||c.husband.toLowerCase().indexOf(q)>=0)).slice(0,30);
+}
+function loanSearch(){
+  const st=L.p.st;
+  if(!st.branch){toast('Select Branch',true);return;}
+  const base=st.group?S.cust.filter(c=>c.branch===st.branch&&c.day===st.day&&c.group===st.group):[];
+  const list=findCust(st.branch,$('#lSearch').value,base);
+  if(!list.length&&$('#lSearch').value.trim().length<2){$('#lRes').hidden=true;return;}
+  resBox($('#lRes'),list,c=>{
+    L.sel=c;
+    L.p.set({day:c.day,group:c.group});
+    $('#lSearch').value=c.phone||c.name;
+    loanShow();
+  });
+}
+$('#lSearch').addEventListener('focus',loanSearch);
+$('#lSearch').addEventListener('input',loanSearch);
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#lSearchBox'))$('#lRes').hidden=true;
+  if(!e.target.closest('#v-hist .panel'))$('#hRes').hidden=true;
+});
+$('#lLoan').addEventListener('input',e=>{digits(e.target);loanCalc();});
+['lAad','lBank','lPh'].forEach(id=>$('#'+id).addEventListener('input',e=>digits(e.target)));
+['lPan','lIfsc'].forEach(id=>$('#'+id).addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');}));
+$('#lGo').addEventListener('click',async()=>{
+  const st=L.p.st,isNew=L.mode==='new';
+  if(!st.branch){toast('Select Branch',true);return;}
+  if(!st.day){toast('Select Day',true);return;}
+  let group=st.group;
+  if(isNew){
+    if(group==='__new__')group=$('#lNewGroup').value.trim().toUpperCase();
+    if(!group){toast('Select Group',true);return;}
+    if(!$('#lName').value.trim()){toast('Enter Customer Name',true);return;}
+    if(!$('#lHus').value.trim()){toast('Enter Husband Name',true);return;}
+    if(!/^\d{10}$/.test($('#lPh').value)){toast('Enter valid Ph No',true);return;}
+  }else if(!L.sel){toast('Search Customer',true);return;}
+  else group=L.sel.group;
+  if(!(Number($('#lLoan').value)>0)){toast('Enter Loan Amt',true);return;}
+  if(!/^\d{12}$/.test($('#lAad').value)){toast('Enter valid Aadhar No',true);return;}
+  const pan=$('#lPan').value;
+  if(pan&&!/^[A-Z]{5}\d{4}[A-Z]$/.test(pan)){toast('Enter valid Pan No',true);return;}
+  if(!/^\d{6,20}$/.test($('#lBank').value)){toast('Enter valid Bank A/C No',true);return;}
+  if(!/^[A-Z]{4}0[A-Z0-9]{6}$/.test($('#lIfsc').value)){toast('Enter valid Ifsc Code',true);return;}
+  const p={mode:L.mode,branch:st.branch,day:isNew?st.day:L.sel.day,group:group,date:st.date,id:L.sel?L.sel.id:'',
+    name:$('#lName').value,husband:$('#lHus').value,phone:$('#lPh').value,loan:$('#lLoan').value,
+    aadhar:$('#lAad').value,pan:pan,bank:$('#lBank').value,ifsc:$('#lIfsc').value};
+  const res=await safe(()=>call('saveLoan',p),true);
+  if(!res)return;
+  const a=res.customer;
+  const o={id:a[0],branch:a[1],day:a[2],group:a[3],name:a[4],husband:a[5],phone:a[6],emi:a[7],close:a[8],od:a[9]};
+  const ex=S.byId[o.id];
+  if(ex)Object.assign(ex,o);else S.cust.push(o);
+  buildTree();
+  L.p.st.group=isNew?L.p.st.group:'';
+  L.p.paintGroups();
+  loanReset();
+  toast('Saved');
+});
+
+const T={p:null,hu:[{a:'',t:''}],pu:[{a:'',t:''}],req:0,dirty:false};
+LOADERS.txn=()=>txnLoad();
+function txnReset(){
+  T.dirty=false;
+  $('#tHd').value='';$('#tPd').value='';
+  T.hu=[{a:'',t:''}];T.pu=[{a:'',t:''}];
+  upiPaint('h');upiPaint('p');txnSum();
+}
+function txnLoad(){
+  const st=T.p.st;
+  if(!st.branch){$('#txnBody').hidden=true;return;}
+  $('#txnBody').hidden=false;
+  txnReset();
+  const req=++T.req;
+  safe(()=>call('getTxn',{branch:st.branch,date:st.date})).then(d=>{
+    if(!d||req!==T.req||T.dirty)return;
+    $('#tHd').value=d.hdfcDep||'';
+    $('#tPd').value=d.pnbDep||'';
+    T.hu=d.hdfcUpi.length?d.hdfcUpi.map(x=>({a:String(x.amt),t:x.tid})):[{a:'',t:''}];
+    T.pu=d.pnbUpi.length?d.pnbUpi.map(x=>({a:String(x.amt),t:x.tid})):[{a:'',t:''}];
+    upiPaint('h');upiPaint('p');txnSum();
+  });
+}
+function upiPaint(k){
+  const list=k==='h'?T.hu:T.pu;
+  $(k==='h'?'#tHu':'#tPu').innerHTML=list.map((x,i)=>{
+    const last=i===list.length-1;
+    return '<div class="upr"><input inputmode="numeric" data-k="'+k+'" data-i="'+i+'" data-f="a" value="'+esc(x.a)+'" aria-label="Upi Amt">'+
+      '<input data-k="'+k+'" data-i="'+i+'" data-f="t" value="'+esc(x.t)+'" aria-label="Transaction Id" autocapitalize="characters">'+
+      (last?'<button type="button" class="sq" data-add="'+k+'" aria-label="Add">+</button>':'<button type="button" class="sq rm" data-rm="'+k+'" data-i="'+i+'" aria-label="Remove">&times;</button>')+
+      '</div>';
+  }).join('');
+}
+function txnSum(){
+  const s=l=>l.reduce((t,x)=>t+Number(x.a||0),0);
+  $('#sHd').textContent=nf($('#tHd').value);
+  $('#sPd').textContent=nf($('#tPd').value);
+  $('#sHu').textContent=nf(s(T.hu));
+  $('#sPu').textContent=nf(s(T.pu));
+}
+$('#tHd').addEventListener('input',e=>{T.dirty=true;digits(e.target);txnSum();});
+$('#tPd').addEventListener('input',e=>{T.dirty=true;digits(e.target);txnSum();});
+$('#txnBody').addEventListener('input',e=>{
+  const el=e.target;if(!el.dataset.k)return;
+  T.dirty=true;
+  if(el.dataset.f==='a')digits(el);
+  const list=el.dataset.k==='h'?T.hu:T.pu;
+  list[+el.dataset.i][el.dataset.f]=el.dataset.f==='t'?el.value.trim():el.value;
+  txnSum();
+});
+$('#txnBody').addEventListener('click',e=>{
+  const add=e.target.closest('[data-add]'),rm=e.target.closest('[data-rm]');
+  if(add||rm)T.dirty=true;
+  if(add){const k=add.dataset.add;(k==='h'?T.hu:T.pu).push({a:'',t:''});upiPaint(k);const ins=$$('#'+(k==='h'?'tHu':'tPu')+' input[data-f="a"]');ins[ins.length-1].focus();}
+  if(rm){const k=rm.dataset.rm;(k==='h'?T.hu:T.pu).splice(+rm.dataset.i,1);upiPaint(k);txnSum();}
+});
+$('#tGo').addEventListener('click',async()=>{
+  const st=T.p.st;
+  if(!st.branch){toast('Select Branch',true);return;}
+  const mk=l=>l.map(x=>({amt:Number(x.a||0),tid:x.t}));
+  const res=await safe(()=>call('saveTxn',{branch:st.branch,day:st.day,date:st.date,hdfcDep:Number($('#tHd').value||0),pnbDep:Number($('#tPd').value||0),hdfcUpi:mk(T.hu),pnbUpi:mk(T.pu)}),true);
+  if(res)toast('Saved');
+});
+
+const K={p:null,d:null,req:0,dirty:false};
+LOADERS.cash=()=>cashLoad();
+function cashLoad(){
+  const st=K.p.st;
+  if(!st.branch){$('#cashBody').hidden=true;return;}
+  $('#cashBody').hidden=false;
+  K.dirty=false;
+  const req=++K.req;
+  safe(()=>call('getCash',{branch:st.branch,date:st.date})).then(d=>{
+    if(!d||req!==K.req)return;
+    K.d=d;
+    if(!K.dirty){$('#kOpen').value=d.opening||'';$('#kMisc').value=d.misc||'';}
+    $('#kColl').value=nf(d.collection);
+    $('#kHd').value=nf(d.hdfcDep);
+    $('#kPd').value=nf(d.pnbDep);
+    $('#kHu').value=nf(d.hdfcUpi);
+    $('#kPu').value=nf(d.pnbUpi);
+    cashCalc();
+  });
+}
+function cashCalc(){
+  const d=K.d;if(!d)return;
+  const inc=Number($('#kOpen').value||0)+d.collection+Number($('#kMisc').value||0);
+  const exp=d.hdfcDep+d.pnbDep+d.hdfcUpi+d.pnbUpi;
+  $('#kInc').textContent=nf(inc);
+  $('#kExp').textContent=nf(exp);
+  $('#kClose').textContent=nf(inc-exp);
+}
+['kOpen','kMisc'].forEach(id=>$('#'+id).addEventListener('input',e=>{K.dirty=true;digits(e.target);cashCalc();}));
+$('#kGo').addEventListener('click',async()=>{
+  const st=K.p.st;
+  if(!st.branch){toast('Select Branch',true);return;}
+  const res=await safe(()=>call('saveCash',{branch:st.branch,date:st.date,opening:Number($('#kOpen').value||0),misc:Number($('#kMisc').value||0)}),true);
+  if(res)toast('Saved');
+});
+
+LOADERS.hist=()=>{};
+function histSearch(){
+  const b=$('#hB').value;
+  if(!b){toast('Select Branch',true);return;}
+  const list=findCust(b,$('#hQ').value,[]);
+  if(!list.length){$('#hRes').hidden=true;return;}
+  resBox($('#hRes'),list,async c=>{
+    $('#hQ').value=c.phone||c.name;
+    const d=await safe(()=>call('history',{id:c.id}),true);
+    if(d)histShow(d);
+  });
+}
+$('#hQ').addEventListener('input',histSearch);
+$('#hB').addEventListener('change',()=>{lsSet('branch',$('#hB').value);$('#hRes').hidden=true;$('#hOut').innerHTML='';});
+function histShow(d){
+  const i=d.info;
+  let paid=0;
+  d.entries.forEach(x=>{paid+=x.put;});
+  const kv=[['Customer Name',i.name],['Husband Name',i.husband],['Ph No',i.phone],['Branch',i.branch],['Day',i.day],['Group Name',i.group],
+    ['Disb Date',i.disb],['Loan Amt',nf(i.loan)],['Emi Amt',i.emi==='TO'?'TO':nf(i.emi)],['Opening Outstanding',nf(i.opening)],
+    ['Closing Outstanding',nf(i.close)],['OD Amt',nf(i.od)],['Total Put Amt',nf(paid)]];
+  let h='<div class="panel"><div class="kv">'+kv.map(x=>'<div><span>'+x[0]+'</span><b>'+esc(x[1]||'-')+'</b></div>').join('')+'</div></div>';
+  h+='<div class="panel tw"><table><thead><tr><th>Date</th><th class="n">Outstanding</th><th class="n">Put Amt</th><th class="n">Closing Outstanding</th></tr></thead><tbody>';
+  h+=d.entries.length?d.entries.map(x=>'<tr><td>'+esc(x.date)+'</td><td class="n">'+nf(x.open)+'</td><td class="n">'+nf(x.put)+'</td><td class="n">'+nf(x.close)+'</td></tr>').join(''):'<tr><td colspan="4" class="none">No Emi</td></tr>';
+  h+='</tbody></table></div>';
+  $('#hOut').innerHTML=h;
 }
 
-async function loadAdminCustomers() {
-  const el = document.getElementById('admin-customers');
-  el.innerHTML = 'Loading...';
-  try {
-    const list = await callApi('adminGetAllCustomers', { token: TOKEN });
-    if (list.success === false) throw new Error(list.message);
-    let html = '<div class="tableWrap"><table class="dataTable"><thead><tr>' +
-      '<th class="nameCol">Customer</th><th>Husband</th><th>Ph No</th><th>Branch</th><th>Day</th><th>Group</th>'+
-      '<th>Loan Amt</th><th>EMI</th><th>Current OS</th><th>Status</th><th>Action</th></tr></thead><tbody>';
-    list.forEach(function(c){
-      html += '<tr>'+
-        '<td class="nameCol">'+c.customerName+'</td><td>'+c.husbandName+'</td><td>'+c.phNo+'</td>'+
-        '<td>'+c.branch+'</td><td>'+c.day+'</td><td>'+c.group+'</td>'+
-        '<td>'+c.loanAmount+'</td><td>'+c.emi+'</td><td>'+c.currentOS+'</td><td>'+c.status+'</td>'+
-        '<td><button class="smallBtn edit" onclick="editCustomer('+c.rowIndex+')">Edit</button>'+
-        '<button class="smallBtn del" onclick="deleteCustomer('+c.rowIndex+')">Delete</button></td></tr>';
-    });
-    html += '</tbody></table></div>';
-    el.innerHTML = html;
-    window.ADMIN_CUSTOMERS = list;
-  } catch (e) {
-    el.innerText = 'Error: ' + e.message;
-  }
-}
-async function editCustomer(rowIndex) {
-  const c = window.ADMIN_CUSTOMERS.find(x=>x.rowIndex===rowIndex);
-  if (!c) return;
-  const branch = prompt('Branch', c.branch); if (branch===null) return;
-  const area = prompt('Area', c.area); if (area===null) return;
-  const day = prompt('Day', c.day); if (day===null) return;
-  const group = prompt('Group', c.group); if (group===null) return;
-  const customerName = prompt('Customer Name', c.customerName); if (customerName===null) return;
-  const husbandName = prompt('Husband Name', c.husbandName); if (husbandName===null) return;
-  const phNo = prompt('Phone', c.phNo); if (phNo===null) return;
-  const loanAmount = prompt('Loan Amount', c.loanAmount); if (loanAmount===null) return;
-  const emi = prompt('EMI', c.emi); if (emi===null) return;
-  const currentOS = prompt('Current OS', c.currentOS); if (currentOS===null) return;
-  const status = prompt('Status (Active/Closed)', c.status); if (status===null) return;
-  await callApi('adminUpdateCustomer', { token: TOKEN, rowIndex: rowIndex,
-    fields: {branch,area,day,group,customerName,husbandName,phNo,loanAmount,emi,currentOS,status} });
-  loadAdminCustomers();
-}
-async function deleteCustomer(rowIndex) {
-  if (!confirm('Delete this customer permanently?')) return;
-  await callApi('adminDeleteCustomer', { token: TOKEN, rowIndex: rowIndex });
-  loadAdminCustomers();
-}
+LOADERS.rep=()=>{};
+$('#rGo').addEventListener('click',async()=>{
+  const f=$('#rF').value,t=$('#rT').value;
+  if(!f||!t){toast('Select Date',true);return;}
+  const list=await safe(()=>call('report',{branch:$('#rB').value,from:f,to:t}),true);
+  if(!list)return;
+  let dm=0,cl=0;
+  list.forEach(x=>{dm+=x.demand;cl+=x.collected;});
+  let h='<div class="panel tw"><table><thead><tr><th>Date</th><th>Branch</th><th class="n">Demand</th><th class="n">Collected</th><th class="n">Balance</th></tr></thead><tbody>';
+  h+=list.length?list.map(x=>'<tr><td>'+esc(x.date)+'</td><td>'+esc(x.branch)+'</td><td class="n">'+nf(x.demand)+'</td><td class="n">'+nf(x.collected)+'</td><td class="n">'+nf(x.demand-x.collected)+'</td></tr>').join('')+
+    '<tr class="tt"><td>Total</td><td></td><td class="n">'+nf(dm)+'</td><td class="n">'+nf(cl)+'</td><td class="n">'+nf(dm-cl)+'</td></tr>':'<tr><td colspan="5" class="none">No Collection</td></tr>';
+  h+='</tbody></table></div>';
+  $('#rOut').innerHTML=h;
+});
 
-async function loadAdminStaff() {
-  const el = document.getElementById('admin-staff');
-  el.innerHTML = 'Loading...';
-  try {
-    const list = await callApi('adminGetAllStaff', { token: TOKEN });
-    if (list.success === false) throw new Error(list.message);
-    let html = '<button class="primaryBtn" style="margin-bottom:12px;" onclick="addStaffPrompt()">+ Add Staff</button>'+
-      '<div class="tableWrap"><table class="dataTable"><thead><tr><th class="nameCol">Staff</th><th>Branch</th><th>Area</th><th>Password</th><th>Role</th><th>Action</th></tr></thead><tbody>';
-    list.forEach(function(s){
-      html += '<tr><td class="nameCol">'+s.staff+'</td><td>'+s.branch+'</td><td>'+s.area+'</td><td>'+s.password+'</td><td>'+s.role+'</td>'+
-        '<td><button class="smallBtn edit" onclick="editStaff('+s.rowIndex+')">Edit</button>'+
-        '<button class="smallBtn del" onclick="deleteStaff('+s.rowIndex+')">Delete</button></td></tr>';
-    });
-    html += '</tbody></table></div>';
-    el.innerHTML = html;
-    window.ADMIN_STAFF = list;
-  } catch (e) {
-    el.innerText = 'Error: ' + e.message;
-  }
-}
-async function addStaffPrompt() {
-  const staff = prompt('Staff Name'); if (!staff) return;
-  const branch = prompt('Branch Name'); if (!branch) return;
-  const area = prompt('Area Name'); if (area===null) return;
-  const password = prompt('Password'); if (!password) return;
-  const role = prompt('Role (STAFF/ADMIN)', 'STAFF') || 'STAFF';
-  await callApi('adminAddStaff', { token: TOKEN, fields: {staff,branch,area,password,role} });
-  loadAdminStaff();
-}
-async function editStaff(rowIndex) {
-  const s = window.ADMIN_STAFF.find(x=>x.rowIndex===rowIndex);
-  if (!s) return;
-  const branch = prompt('Branch', s.branch); if (branch===null) return;
-  const area = prompt('Area', s.area); if (area===null) return;
-  const staff = prompt('Staff Name', s.staff); if (staff===null) return;
-  const password = prompt('Password', s.password); if (password===null) return;
-  const role = prompt('Role (STAFF/ADMIN)', s.role); if (role===null) return;
-  await callApi('adminUpdateStaff', { token: TOKEN, rowIndex: rowIndex, fields: {branch,area,staff,password,role} });
-  loadAdminStaff();
-}
-async function deleteStaff(rowIndex) {
-  if (!confirm('Delete this staff mapping?')) return;
-  await callApi('adminDeleteStaff', { token: TOKEN, rowIndex: rowIndex });
-  loadAdminStaff();
-}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)go(b.dataset.go);});
+$('#back').addEventListener('click',()=>go('home'));
+$('#logout').addEventListener('click',signOut);
+$('#refresh').addEventListener('click',reload);
+$('#lgo').addEventListener('click',doLogin);
+$('#lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+$('#lu').addEventListener('keydown',e=>{if(e.key==='Enter')$('#lp').focus();});
 
-async function loadAdminCollectionHist() {
-  const el = document.getElementById('admin-collectionHist');
-  el.innerHTML = 'Loading...';
-  try {
-    const list = await callApi('adminGetCollectionHistory', { token: TOKEN, filters: {} });
-    if (list.success === false) throw new Error(list.message);
-    let html = '<div class="tableWrap"><table class="dataTable"><thead><tr>'+
-      '<th class="nameCol">Customer</th><th>Date</th><th>Branch</th><th>Day</th><th>Group</th>'+
-      '<th>EMI Amt</th><th>Put Amount</th><th>Prev OS</th><th>New OS</th></tr></thead><tbody>';
-    list.forEach(function(r){
-      html += '<tr><td class="nameCol">'+r.customerName+'</td><td>'+r.date+'</td><td>'+r.branch+'</td>'+
-        '<td>'+r.day+'</td><td>'+r.group+'</td><td>'+r.emiAmt+'</td><td>'+r.putAmount+'</td>'+
-        '<td>'+r.previousOS+'</td><td>'+r.newOS+'</td></tr>';
-    });
-    html += '</tbody></table></div>';
-    el.innerHTML = html;
-  } catch (e) {
-    el.innerText = 'Error: ' + e.message;
-  }
-}
-async function loadAdminDisbursalHist() {
-  const el = document.getElementById('admin-disbursalHist');
-  el.innerHTML = 'Loading...';
-  try {
-    const list = await callApi('adminGetDisbursalHistory', { token: TOKEN, filters: {} });
-    if (list.success === false) throw new Error(list.message);
-    let html = '<div class="tableWrap"><table class="dataTable"><thead><tr>'+
-      '<th class="nameCol">Customer</th><th>Date</th><th>Branch</th><th>Day</th><th>Group</th>'+
-      '<th>Loan Amt</th><th>EMI</th><th>Type</th></tr></thead><tbody>';
-    list.forEach(function(r){
-      html += '<tr><td class="nameCol">'+r.customerName+'</td><td>'+r.date+'</td><td>'+r.branch+'</td>'+
-        '<td>'+r.day+'</td><td>'+r.group+'</td><td>'+r.loanAmount+'</td><td>'+r.emi+'</td><td>'+r.type+'</td></tr>';
-    });
-    html += '</tbody></table></div>';
-    el.innerHTML = html;
-  } catch (e) {
-    el.innerText = 'Error: ' + e.message;
-  }
-}
+(async function start(){
+  const tok=lsGet('tok');
+  if(!tok){go('login');return;}
+  S.token=tok;
+  busy(true);
+  try{
+    const d=await call('boot');
+    applyBoot(d);enter();
+  }catch(e){S.token='';if(e.message==='SESSION')lsSet('tok','');go('login');if(e.message!=='SESSION')toast(e.message,true);}
+  finally{busy(false);}
+})();
 </script>
 </body>
 </html>
