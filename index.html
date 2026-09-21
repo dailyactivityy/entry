@@ -39,6 +39,15 @@ input.bad{border-color:var(--bad);background:#fdeceb}
 .si:hover{background:#f4f7f6}
 .si.on{background:var(--gold-l);border-left-color:var(--gold);font-weight:700}
 .stats{display:flex;gap:18px;align-items:flex-end}
+input:disabled{background:#f4f7f6;color:var(--ink);opacity:1}
+.dmeta{font-size:15px;color:var(--mute);font-weight:500;margin:0 2px 10px}
+.dash{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.dc{background:#fff;border:1px solid var(--line);border-left:6px solid var(--pine);border-radius:var(--r);padding:14px 14px 12px}
+.dc span{display:block;font-size:14px;color:var(--mute);font-weight:500}
+.dc b{display:block;font-size:28px;margin-top:2px;overflow-wrap:anywhere}
+.dc.od{border-left-color:var(--bad)}
+.dc.od b{color:var(--bad)}
+.rtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .bar .btn{padding:10px 22px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
 .login{max-width:400px;margin:12vh auto 0}
@@ -130,6 +139,9 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
 .crow .c-name{font-size:16px}
 .chead .n{font-size:13px;font-weight:500}
 }
+@media (min-width:760px){
+.dash{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+}
 @media (min-width:980px){
 .wrap{padding:26px 34px 120px}
 .bar{padding:10px 34px}
@@ -161,20 +173,14 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
 </section>
 
 <section id="v-home" hidden>
-  <div class="menu">
-    <button class="mi" data-go="coll"><svg viewBox="0 0 24 24"><path d="M6 4h12M6 9h12M9 4c5 0 7 2.5 7 5s-2 5-7 5H8l8 7"/></svg>Collection</button>
-    <button class="mi" data-go="loan"><svg viewBox="0 0 24 24"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16" cy="14" r="1.5"/></svg>Loan Disbursed</button>
-    <button class="mi" data-go="txn"><svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Transaction</button>
-    <button class="mi" data-go="cash"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Cash in Hand</button>
-    <button class="mi" data-go="hist"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Customer History</button>
-    <button class="mi" data-go="rep"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Report</button>
-  </div>
+  <div class="dmeta" id="dMeta">&nbsp;</div>
+  <div class="dash" id="dash"></div>
 </section>
 
 <section id="v-coll" hidden>
   <div class="panel" id="collPick"></div>
   <div id="collList"></div>
-  <div class="bar" id="collBar" hidden><div><div class="stats"><div class="tot"><span>Total Customer</span><b id="collCnt">0</b></div><div class="tot" id="collDemBox" hidden><span>Demand Amt</span><b id="collDem">0</b></div><div class="tot"><span>Net Amt</span><b id="collTot">0</b></div></div><button class="btn" id="collGo">Submit</button></div></div>
+  <div class="bar" id="collBar" hidden><div><div class="stats"><div class="tot"><span>Total Customer</span><b id="collCnt">0</b></div><div class="tot" id="collDemBox" hidden><span>Demand Amt</span><b id="collDem">0</b></div><div class="tot" id="collNetBox" hidden><span>Net Amt</span><b id="collTot">0</b></div></div><button class="btn" id="collGo">Submit</button></div></div>
 </section>
 
 <section id="v-loan" hidden>
@@ -229,7 +235,7 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
       <span>Hdfc Upi Amt</span><b id="sHu">0</b>
       <span>Pnb Upi Amt</span><b id="sPu">0</b>
     </div></div>
-    <div class="bar"><div><span></span><button class="btn" id="tGo">Submit</button></div></div>
+    <div class="bar"><div><span class="none" id="tMsg"></span><button class="btn" id="tGo">Submit</button></div></div>
   </div>
 </section>
 
@@ -256,7 +262,7 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
       <div class="sum"><span>Total Expense</span><b class="big" id="kExp">0</b></div>
     </div>
     <div class="panel"><div class="sum"><span>Close Cash</span><b class="big" id="kClose">0</b></div></div>
-    <div class="bar"><div><span></span><button class="btn" id="kGo">Submit</button></div></div>
+    <div class="bar"><div><span class="none" id="kMsg"></span><button class="btn" id="kGo">Submit</button></div></div>
   </div>
 </section>
 
@@ -272,6 +278,12 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
 </section>
 
 <section id="v-rep" hidden>
+  <div class="tabs"><button data-r="ov">Overview</button><button data-r="cr">Collection Report</button></div>
+  <div id="repOv" hidden>
+    <div class="panel rtop"><div class="none" id="ovMeta"></div><button class="btn" id="ovXls" disabled>Download Excel</button></div>
+    <div id="ovOut"></div>
+  </div>
+  <div id="repCr" hidden>
   <div class="panel">
     <div class="grid2">
       <label class="fld"><span>Branch</span><select id="rB"></select></label>
@@ -281,6 +293,7 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
     <div style="margin-top:12px"><button class="btn" id="rGo">Show</button></div>
   </div>
   <div id="rOut"></div>
+</div>
 </section>
 
 </main>
@@ -296,6 +309,15 @@ tr.tt td{font-weight:700;background:var(--gold-l)}
 const API_URL='https://script.google.com/macros/s/AKfycbypNadmbnx6DGeQY_sT4iSeZV9opTy0mnb5Xt_ZpDljrX5jh1jplkXLT3NRipBR-0W10Q/exec';
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday'];
 const ALLDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MENU=[
+['coll','Collection','<svg viewBox="0 0 24 24"><path d="M6 4h12M6 9h12M9 4c5 0 7 2.5 7 5s-2 5-7 5H8l8 7"/></svg>'],
+['loan','Loan Disbursed','<svg viewBox="0 0 24 24"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16" cy="14" r="1.5"/></svg>'],
+['txn','Transaction','<svg viewBox="0 0 24 24"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>'],
+['cash','Cash in Hand','<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>'],
+['hist','Customer History','<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'],
+['rep','Report','<svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>']];
+const DASH=[['borrowers','Total Borrower'],['outstanding','Total Outstanding'],['demandNo','Today Demand No'],['demand','Today Demand'],['collection','Today Collection'],['disbNo','Today Loan Disb No'],['disbAmt','Today Loan Amt'],['odNo','OD No'],['odAmt','OD Amt'],['odOut','OD Outstanding']];
+const isAdmin=()=>S.role==='ADMIN';
 const TITLES={home:'Loan Desk',coll:'Collection',loan:'Loan Disbursed',txn:'Transaction',cash:'Cash in Hand',hist:'Customer History',rep:'Report'};
 const S={token:'',name:'',role:'',branches:[],cust:[],byId:{},tree:{}};
 let view='login';
@@ -429,7 +451,7 @@ function enter(){
   $('#who').textContent=S.name;
   $('#dwho').textContent=S.name;
   $('#dlist').innerHTML='<button class="si" data-go="home"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></svg>Home</button>'+
-    $$('.mi').map(b=>'<button class="si" data-go="'+b.dataset.go+'">'+b.innerHTML+'</button>').join('');
+    MENU.map(m=>'<button class="si" data-go="'+m[0]+'">'+m[2]+m[1]+'</button>').join('');
   C.p=picker($('#collPick'),{day:1,group:1,onChange:collLoad});
   L.p=picker($('#loanPick'),{day:1,group:1,newGroup:0,onChange:loanPick});
   T.p=picker($('#txnPick'),{day:1,onChange:txnLoad});
@@ -472,7 +494,18 @@ async function reload(){
   toast('Updated');
 }
 
-const C={p:null,rows:[],req:0,ready:false};
+function dashPaint(t){
+  $('#dash').innerHTML=DASH.map(x=>'<div class="dc'+(x[0].indexOf('od')===0?' od':'')+'"><span>'+x[1]+'</span><b>'+(t?nf(t[x[0]]):'-')+'</b></div>').join('');
+}
+LOADERS.home=async()=>{
+  dashPaint(null);
+  const d=await safe(()=>call('overview'));
+  if(!d||view!=='home')return;
+  $('#dMeta').textContent=d.day+', '+d.date;
+  dashPaint(d.total);
+};
+const C={p:null,rows:[],req:0,ready:false,busy:false};
+function collLocked(){return !isAdmin()&&C.rows.some(r=>r.ex);}
 function defPut(c){const e=typeof c.emi==='number'?c.emi:0;const v=Math.min(e,c.close);return v>0?String(v):'';}
 LOADERS.coll=()=>collLoad();
 function collLoad(){
@@ -484,9 +517,12 @@ function collLoad(){
   const req=++C.req;
   safe(()=>call('collectionEntries',{branch:st.branch,date:st.date})).then(map=>{
     if(!map||req!==C.req)return;
+    const anyEx=C.rows.some(r=>map[r.c.id]);
+    const lockNow=!isAdmin()&&anyEx;
     C.rows.forEach(r=>{
       r.ex=map[r.c.id]||null;
-      if(r.ex&&!r.touched)r.val=String(r.ex.put);
+      if(lockNow)r.val=r.ex?String(r.ex.put):'';
+      else if(!r.touched){if(r.ex)r.val=String(r.ex.put);else if(anyEx)r.val='';}
     });
     C.ready=true;
     collPaint();
@@ -494,6 +530,7 @@ function collLoad(){
 }
 function collPaint(){
   const list=$('#collList');
+  const lock=collLocked();
   if(!C.rows.length){list.innerHTML='<div class="empty">No customers</div>';$('#collBar').hidden=true;return;}
   let h='<div class="crow chead"><div>Customer Name</div><div>Husband Name</div><div>Ph No</div><div class="n">Outstanding</div><div class="n">OD Amt</div><div class="n">Emi Amt</div><div class="n">Put Amt</div></div>';
   h+=C.rows.map((r,i)=>{
@@ -505,22 +542,28 @@ function collPaint(){
       '<div class="n c-out" data-l="Outstanding">'+nf(out)+'</div>'+
       '<div class="n c-od'+(od>0?' due':'')+'" data-l="OD Amt">'+nf(od)+'</div>'+
       '<div class="n c-emi" data-l="Emi Amt">'+(c.emi==='TO'?'TO':nf(c.emi))+'</div>'+
-      '<div class="c-in"><input inputmode="numeric" data-i="'+i+'" value="'+esc(r.val)+'" aria-label="Put Amt"></div>'+
+      '<div class="c-in"><input inputmode="numeric" data-i="'+i+'" value="'+esc(r.val)+'" aria-label="Put Amt"'+(lock?' readonly':'')+'></div>'+
       '</div>';
   }).join('');
   list.innerHTML=h;
   $('#collBar').hidden=false;
+  $('#collGo').disabled=lock;
+  $('#collGo').textContent=lock?'Submitted':'Submit';
   collTotal();
 }
 function collTotal(){
-  let t=0,dem=0;
-  C.rows.forEach(r=>{t+=Number(r.val||0);if(typeof r.c.emi==='number')dem+=r.c.emi;});
+  let net=0,dem=0,sub=false;
+  C.rows.forEach(r=>{
+    const out=r.ex?r.ex.open:r.c.close;
+    if(r.ex){sub=true;net+=r.ex.put;}
+    if(typeof r.c.emi==='number'&&r.c.emi>0&&out>0)dem+=r.c.emi;
+  });
   const st=C.p.st;
-  $('#collTot').textContent=nf(t);
   $('#collCnt').textContent=nf(C.rows.length);
-  const showDem=st.day&&st.day===dayOfIso(st.date);
-  $('#collDemBox').hidden=!showDem;
+  $('#collDemBox').hidden=!(st.day&&st.day===dayOfIso(st.date));
   $('#collDem').textContent=nf(dem);
+  $('#collNetBox').hidden=!sub;
+  $('#collTot').textContent=nf(net);
 }
 $('#collList').addEventListener('input',e=>{
   const el=e.target;if(el.tagName!=='INPUT')return;
@@ -548,7 +591,16 @@ $('#collGo').addEventListener('click',async()=>{
     if(put!==before)items.push({id:r.c.id,put:put});
   }
   if(!items.length){toast('No change');return;}
-  const res=await safe(()=>call('saveCollection',{branch:st.branch,day:st.day,date:st.date,group:st.group,items:items}),true);
+  if(C.busy||collLocked())return;
+  C.busy=true;
+  let res=null;
+  busy(true);
+  try{res=await call('saveCollection',{branch:st.branch,day:st.day,date:st.date,group:st.group,items:items});}
+  catch(e){
+    if(e.message==='SESSION'){signOut();toast('Login again',true);}
+    else{toast(e.message,true);if(/Already submitted/.test(e.message))collLoad();}
+  }
+  finally{busy(false);C.busy=false;}
   if(!res)return;
   const m={};items.forEach(i=>{m[i.id]=i.put;});
   C.rows.forEach(r=>{
@@ -591,14 +643,14 @@ function loanReset(){
 }
 function setMode(m){
   L.mode=m;
-  $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $$('#v-loan .tabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   L.p.cfg.newGroup=m==='new'?1:0;
   L.p.st.group='';
   L.p.paint();
   loanReset();
 }
 LOADERS.loan=()=>{};
-$$('.tabs button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.m)));
+$$('#v-loan .tabs button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.m)));
 function loanCalc(){
   const v=Number($('#lLoan').value||0);
   $('#lClose').value=v>0?nf(Math.round(v*1.24)):'';
@@ -671,13 +723,20 @@ $('#lGo').addEventListener('click',async()=>{
   toast('Saved');
 });
 
-const T={p:null,hu:[{a:'',t:''}],pu:[{a:'',t:''}],req:0,dirty:false};
+const T={p:null,hu:[{a:'',t:''}],pu:[{a:'',t:''}],req:0,dirty:false,saved:false};
+function txnLock(){
+  const on=!isAdmin()&&T.saved;
+  $$('#txnBody input,#txnBody .sq').forEach(e=>{e.disabled=on;});
+  $('#tGo').disabled=on;
+  $('#tGo').textContent=on?'Submitted':'Submit';
+  $('#tMsg').textContent=on?'Submitted. Only admin can edit.':'';
+}
 LOADERS.txn=()=>txnLoad();
 function txnReset(){
-  T.dirty=false;
+  T.dirty=false;T.saved=false;
   $('#tHd').value='';$('#tPd').value='';
   T.hu=[{a:'',t:''}];T.pu=[{a:'',t:''}];
-  upiPaint('h');upiPaint('p');txnSum();
+  upiPaint('h');upiPaint('p');txnSum();txnLock();
 }
 function txnLoad(){
   const st=T.p.st;
@@ -692,6 +751,7 @@ function txnLoad(){
     T.hu=d.hdfcUpi.length?d.hdfcUpi.map(x=>({a:String(x.amt),t:x.tid})):[{a:'',t:''}];
     T.pu=d.pnbUpi.length?d.pnbUpi.map(x=>({a:String(x.amt),t:x.tid})):[{a:'',t:''}];
     upiPaint('h');upiPaint('p');txnSum();
+    T.saved=!!d.saved;txnLock();
   });
 }
 function upiPaint(k){
@@ -732,16 +792,22 @@ $('#tGo').addEventListener('click',async()=>{
   if(!st.branch){toast('Select Branch',true);return;}
   const mk=l=>l.map(x=>({amt:Number(x.a||0),tid:x.t}));
   const res=await safe(()=>call('saveTxn',{branch:st.branch,day:st.day,date:st.date,hdfcDep:Number($('#tHd').value||0),pnbDep:Number($('#tPd').value||0),hdfcUpi:mk(T.hu),pnbUpi:mk(T.pu)}),true);
-  if(res)toast('Saved');
+  if(res){T.saved=true;txnLock();toast('Saved');}
 });
 
-const K={p:null,d:null,req:0,dirty:false};
+const K={p:null,d:null,req:0,dirty:false,saved:false};
+function cashLock(){
+  const on=!isAdmin()&&K.saved;
+  ['kOpen','kMisc','kGo'].forEach(id=>{$('#'+id).disabled=on;});
+  $('#kGo').textContent=on?'Submitted':'Submit';
+  $('#kMsg').textContent=on?'Submitted. Only admin can edit.':'';
+}
 LOADERS.cash=()=>cashLoad();
 function cashLoad(){
   const st=K.p.st;
   if(!st.branch){$('#cashBody').hidden=true;return;}
   $('#cashBody').hidden=false;
-  K.dirty=false;
+  K.dirty=false;K.saved=false;cashLock();
   const req=++K.req;
   safe(()=>call('getCash',{branch:st.branch,date:st.date})).then(d=>{
     if(!d||req!==K.req)return;
@@ -753,6 +819,7 @@ function cashLoad(){
     $('#kHu').value=nf(d.hdfcUpi);
     $('#kPu').value=nf(d.pnbUpi);
     cashCalc();
+    K.saved=!!d.rowSaved;cashLock();
   });
 }
 function cashCalc(){
@@ -768,7 +835,7 @@ $('#kGo').addEventListener('click',async()=>{
   const st=K.p.st;
   if(!st.branch){toast('Select Branch',true);return;}
   const res=await safe(()=>call('saveCash',{branch:st.branch,date:st.date,opening:Number($('#kOpen').value||0),misc:Number($('#kMisc').value||0)}),true);
-  if(res)toast('Saved');
+  if(res){K.saved=true;cashLock();toast('Saved');}
 });
 
 LOADERS.hist=()=>{};
@@ -799,7 +866,80 @@ function histShow(d){
   $('#hOut').innerHTML=h;
 }
 
-LOADERS.rep=()=>{};
+LOADERS.rep=()=>repTab('');
+const OV={data:null};
+function repTab(k){
+  $$('#v-rep .tabs button').forEach(b=>b.classList.toggle('on',b.dataset.r===k));
+  $('#repOv').hidden=k!=='ov';
+  $('#repCr').hidden=k!=='cr';
+  if(k==='ov')ovLoad();
+}
+$$('#v-rep .tabs button').forEach(b=>b.addEventListener('click',()=>repTab(b.dataset.r)));
+async function ovLoad(){
+  $('#ovOut').innerHTML='';$('#ovMeta').textContent='';$('#ovXls').disabled=true;
+  const d=await safe(()=>call('overview'),true);
+  if(!d)return;
+  OV.data=d;
+  const row=(o,cls)=>'<tr'+(cls?' class="'+cls+'"':'')+'><td>'+esc(o.branch)+'</td>'+DASH.map(x=>'<td class="n">'+nf(o[x[0]])+'</td>').join('')+'</tr>';
+  let h='<div class="panel tw"><table><thead><tr><th>Branch</th>'+DASH.map(x=>'<th class="n">'+x[1]+'</th>').join('')+'</tr></thead><tbody>';
+  h+=d.rows.length?d.rows.map(o=>row(o)).join('')+row(d.total,'tt'):'<tr><td colspan="11" class="none">No data</td></tr>';
+  h+='</tbody></table></div>';
+  $('#ovOut').innerHTML=h;
+  $('#ovMeta').textContent='As on '+d.day+', '+d.date;
+  $('#ovXls').disabled=!d.rows.length;
+}
+$('#ovXls').addEventListener('click',()=>{
+  const d=OV.data;if(!d)return;
+  const line=o=>[o.branch].concat(DASH.map(x=>o[x[0]]));
+  const rows=[{v:['Overview - '+d.day+', '+d.date],b:1},{v:['Branch'].concat(DASH.map(x=>x[1])),b:1}]
+    .concat(d.rows.map(o=>({v:line(o)})),[{v:line(d.total),b:1}]);
+  const blob=makeXlsx(rows,'Overview',DASH.length+1);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Overview_'+d.date.replace(/\//g,'-')+'.xlsx';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+});
+
+function crc32(u8){let c,crc=-1;for(let i=0;i<u8.length;i++){c=(crc^u8[i])&255;for(let k=0;k<8;k++)c=c&1?(c>>>1)^0xEDB88320:c>>>1;crc=(crc>>>8)^c;}return (crc^-1)>>>0;}
+function zipStore(files){
+  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  files.forEach(f=>{
+    const nm=enc.encode(f.name),data=enc.encode(f.text),crc=crc32(data),sz=data.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x0800,true);lh.setUint16(10,0,true);lh.setUint16(12,0x21,true);
+    lh.setUint32(14,crc,true);lh.setUint32(18,sz,true);lh.setUint32(22,sz,true);lh.setUint16(26,nm.length,true);
+    parts.push(lh.buffer,nm,data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);ch.setUint16(14,0x21,true);
+    ch.setUint32(16,crc,true);ch.setUint32(20,sz,true);ch.setUint32(24,sz,true);ch.setUint16(28,nm.length,true);ch.setUint32(42,off,true);
+    cen.push(ch.buffer,nm);
+    off+=30+nm.length+sz;
+  });
+  let cl=0;cen.forEach(x=>{cl+=x.byteLength;});
+  const end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cl,true);end.setUint32(16,off,true);
+  return new Blob(parts.concat(cen,[end.buffer]),{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function makeXlsx(rows,sheetName,ncol){
+  const X=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const col=i=>String.fromCharCode(65+i);
+  const sd=rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.v.map((v,ci)=>{
+    const ref=col(ci)+(ri+1);
+    if(typeof v==='number')return '<c r="'+ref+'" s="'+(r.b?3:2)+'"><v>'+v+'</v></c>';
+    return '<c r="'+ref+'" t="inlineStr"'+(r.b?' s="1"':'')+'><is><t>'+X(v)+'</t></is></c>';
+  }).join('')+'</row>').join('');
+  const NS='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+  const H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  return zipStore([
+    {name:'[Content_Types].xml',text:H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'},
+    {name:'_rels/.rels',text:H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:'xl/workbook.xml',text:H+'<workbook '+NS+' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="'+X(sheetName)+'" sheetId="1" r:id="rId1"/></sheets></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels',text:H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'},
+    {name:'xl/styles.xml',text:H+'<styleSheet '+NS+'><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="3" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'},
+    {name:'xl/worksheets/sheet1.xml',text:H+'<worksheet '+NS+'><cols><col min="1" max="'+ncol+'" width="20" customWidth="1"/></cols><sheetData>'+sd+'</sheetData></worksheet>'}
+  ]);
+}
 $('#rGo').addEventListener('click',async()=>{
   const f=$('#rF').value,t=$('#rT').value;
   if(!f||!t){toast('Select Date',true);return;}
