@@ -378,6 +378,11 @@ async function callOnce(action,payload,timeoutMs){
   let r;
   try{r=await res.json();}catch(e){throw new Error('TRANSIENT:Server error. Try again');}
   if(r&&r.ok)return r.data;
+  // Apps Script's /exec URL 302-redirects internally, and per the fetch spec a POST gets silently
+  // downgraded to GET on that redirect - which lands on doGet() (whose stub reply is exactly this
+  // string) instead of doPost(). It has nothing to do with the user's real session, so retry the
+  // POST instead of forcing a logout.
+  if(r&&r.error==='Login required')throw new Error('TRANSIENT:Login required');
   throw new Error((r&&r.error)||'Failed');
 }
 // Retries a handful of times on network hiccups / slow-server blips before bothering the user -
@@ -385,7 +390,7 @@ async function callOnce(action,payload,timeoutMs){
 // connection. Real, non-transient errors (wrong password, validation messages, SESSION) are never
 // retried - they come straight back to the caller on the first try.
 async function call(action,payload){
-  const tries=action==='login'?3:2;
+  const tries=3;
   let lastErr;
   for(let i=1;i<=tries;i++){
     try{
