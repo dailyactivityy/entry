@@ -492,6 +492,7 @@ function enter(){
 }
 
 function signOut(){
+  if(S.token)call('logout').catch(()=>{});
   lsSet('tok','');
   S.token='';
   $('#lp').value='';
